@@ -1,79 +1,120 @@
+import type { TaskStatus } from "../types";
 import "./source-icon.css";
 
-// Claude official sparkle icon
-const ccIcon = (
-  <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-    <rect width="24" height="24" rx="6" fill="#D97757" />
-    <g transform="translate(4,4) scale(0.9375)">
-      <path d="M6.96 15.2L7.184 14.208L7.44 12.928L7.648 11.904L7.84 10.64L7.952 10.224L7.936 10.192L7.856 10.208L6.896 11.52L5.44 13.488L4.288 14.704L4.016 14.816L3.536 14.576L3.584 14.128L3.856 13.744L5.44 11.712L6.4 10.448L7.024 9.728L7.008 9.632H6.976L2.752 12.384L2 12.48L1.664 12.176L1.712 11.68L1.872 11.52L3.136 10.64L6.288 8.88L6.336 8.72L6.288 8.64H6.128L5.6 8.608L3.808 8.56L2.256 8.496L0.736 8.416L0.352 8.336L0 7.856L0.032 7.616L0.352 7.408L0.816 7.44L1.824 7.52L3.344 7.616L4.448 7.68L6.08 7.856H6.336L6.368 7.744L6.288 7.68L6.224 7.616L4.64 6.56L2.944 5.44L2.048 4.784L1.568 4.448L1.328 4.144L1.232 3.472L1.664 2.992L2.256 3.04L2.4 3.072L2.992 3.536L4.256 4.512L5.92 5.744L6.16 5.936L6.272 5.872V5.824L6.16 5.648L5.264 4.016L4.304 2.352L3.872 1.664L3.76 1.248C3.7176 1.104 3.696 0.944 3.696 0.768L4.192 0.096L4.464 0L5.136 0.096L5.408 0.336L5.824 1.28L6.48 2.768L7.52 4.784L7.824 5.392L7.984 5.936L8.048 6.112H8.16V6.016L8.24 4.864L8.4 3.472L8.56 1.68L8.608 1.168L8.864 0.56L9.36 0.24L9.744 0.416L10.064 0.88L10.016 1.168L9.84 2.4L9.456 4.336L9.216 5.648H9.36L9.52 5.472L10.176 4.608L11.28 3.232L11.76 2.688L12.336 2.08L12.704 1.792H13.392L13.888 2.544L13.664 3.328L12.96 4.224L12.368 4.976L11.52 6.112L11.008 7.024L11.056 7.088H11.168L13.072 6.672L14.112 6.496L15.328 6.288L15.888 6.544L15.952 6.8L15.728 7.344L14.416 7.664L12.88 7.968L10.592 8.512L10.56 8.528L10.592 8.576L11.616 8.672L12.064 8.704H13.152L15.168 8.848L15.696 9.2L16 9.616L15.952 9.952L15.136 10.352L14.048 10.096L11.488 9.488L10.624 9.28H10.496V9.344L11.232 10.064L12.56 11.264L14.24 12.816L14.32 13.2L14.112 13.52L13.888 13.488L12.416 12.368L11.84 11.872L10.56 10.8H10.48V10.912L10.768 11.344L12.336 13.696L12.416 14.416L12.304 14.64L11.888 14.784L11.456 14.704L10.528 13.424L9.584 11.968L8.816 10.672L8.736 10.736L8.272 15.568L8.064 15.808L7.584 16L7.184 15.696L6.96 15.2Z" fill="white"/>
-    </g>
-  </svg>
-);
-
-const icons: Record<string, JSX.Element> = {
-  "claude-code": ccIcon,
-  cc: ccIcon,
-  cursor: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#1a1a2e" />
-      <path d="M7 5l10 7-4 1.5L10 18l-1-5.5L7 5z" fill="#00d4aa" />
-    </svg>
-  ),
-  build: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#2d5a27" />
-      <path d="M12 4l8 4.5v7L12 20l-8-4.5v-7L12 4z" stroke="white" strokeWidth="1.5" fill="none" />
-      <path d="M12 12l8-4.5M12 12v8M12 12L4 7.5" stroke="white" strokeWidth="1.2" />
-    </svg>
-  ),
-  make: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#2d5a27" />
-      <path d="M7 8h10M7 12h10M7 16h6" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-  deploy: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#1a3a5c" />
-      <path d="M12 4v10M8 10l4 4 4-4" stroke="#4fc3f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6 17h12" stroke="#4fc3f7" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  ),
-  test: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#4a3080" />
-      <path d="M9 6h6v3l-2 2 2 5H9l2-5-2-2V6z" stroke="white" strokeWidth="1.5" fill="none" />
-    </svg>
-  ),
-  cli: (
-    <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-      <rect width="24" height="24" rx="6" fill="#333" />
-      <path d="M7 9l3 3-3 3" stroke="#0f0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 15h4" stroke="#0f0" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
+const SOURCE_COLORS: Record<string, string> = {
+  "claude-code": "#D97757",
+  cc: "#D97757",
+  cursor: "#00D4AA",
+  build: "#4CAF50",
+  make: "#4CAF50",
+  deploy: "#4FC3F7",
+  test: "#9C6ADE",
+  cli: "#43A047",
 };
 
-const defaultIcon = (
-  <svg viewBox="0 0 24 24" fill="none" className="source-svg">
-    <rect width="24" height="24" rx="6" fill="#555" />
-    <circle cx="12" cy="10" r="3" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M7 19c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-  </svg>
-);
+const DEFAULT_COLOR = "#88AAFF";
+
+// 16x12 pixel grid: 1 = body color, 0 = empty (filled by expression overlay)
+const BODY: number[][] = [
+  [0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0], // row 0:  horns
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0], // row 1:  head top
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0], // row 2:  head
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // row 3:  face
+  [1,1,1,0,0,1,1,1,1,1,1,0,0,1,1,1], // row 4:  eye sockets top
+  [1,1,1,0,0,1,1,1,1,1,1,0,0,1,1,1], // row 5:  eye sockets bottom
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // row 6:  cheeks
+  [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1], // row 7:  mouth top
+  [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1], // row 8:  mouth bottom
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0], // row 9:  body taper
+  [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], // row 10: feet
+  [0,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0], // row 11: feet tips
+];
+
+type Pixel = [number, number, string];
+
+function getExpression(status: TaskStatus, bodyColor: string): Pixel[] {
+  const W = "#FFFFFF";
+  const D = "#1a1a2e";
+  const C = bodyColor;
+
+  switch (status) {
+    case "pending":
+      // Calm: white eyes with pupils looking center, flat mouth
+      return [
+        [3,4,W], [4,4,W], [3,5,W], [4,5,D],    // left eye, pupil bottom-right
+        [11,4,W],[12,4,W],[11,5,D],[12,5,W],    // right eye, pupil bottom-left
+        [6,7,C], [7,7,D], [8,7,D], [9,7,C],    // mouth: flat line
+        [6,8,C], [7,8,C], [8,8,C], [9,8,C],    // mouth bottom: body
+      ];
+    case "running":
+      // Focused: squint eyes (body top, dark bottom), flat mouth
+      return [
+        [3,4,C], [4,4,C], [3,5,D], [4,5,D],    // left eye squint
+        [11,4,C],[12,4,C],[11,5,D],[12,5,D],    // right eye squint
+        [6,7,C], [7,7,D], [8,7,D], [9,7,C],    // mouth: flat line
+        [6,8,C], [7,8,C], [8,8,C], [9,8,C],    // mouth bottom: body
+      ];
+    case "success":
+      // Happy: ^^ closed eyes, big smile arc
+      return [
+        [3,4,D], [4,4,D], [3,5,C], [4,5,C],    // left eye happy ^^
+        [11,4,D],[12,4,D],[11,5,C],[12,5,C],    // right eye happy ^^
+        [6,7,D], [7,7,C], [8,7,C], [9,7,D],    // mouth top: smile ends
+        [6,8,C], [7,8,D], [8,8,D], [9,8,C],    // mouth bottom: smile curve
+      ];
+    case "failed":
+      // Dead: X eyes, frown
+      return [
+        [3,4,D], [4,4,C], [3,5,C], [4,5,D],    // left eye: \ diagonal
+        [11,4,C],[12,4,D],[11,5,D],[12,5,C],    // right eye: / diagonal
+        [6,7,C], [7,7,D], [8,7,D], [9,7,C],    // mouth top: frown ends
+        [6,8,D], [7,8,C], [8,8,C], [9,8,D],    // mouth bottom: frown curve
+      ];
+  }
+}
+
+function PixelMonster({ color, status }: { color: string; status: TaskStatus }) {
+  // Lighter shade for cheek blush
+  const blush = `${color}66`;
+
+  const expression = getExpression(status, color);
+
+  return (
+    <svg viewBox="0 0 16 12" className="source-svg" shapeRendering="crispEdges">
+      {/* Body pixels */}
+      {BODY.map((row, y) =>
+        row.map((cell, x) =>
+          cell ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} /> : null
+        )
+      )}
+      {/* Expression overlay (eyes + mouth) */}
+      {expression.map(([x, y, fill], i) => (
+        <rect key={`e${i}`} x={x} y={y} width={1} height={1} fill={fill as string} />
+      ))}
+      {/* Cheek blush */}
+      <rect x={2} y={6} width={1} height={1} fill={blush} />
+      <rect x={13} y={6} width={1} height={1} fill={blush} />
+      {/* Shine highlight */}
+      <rect x={4} y={2} width={1} height={1} fill="rgba(255,255,255,0.3)" />
+      <rect x={5} y={2} width={1} height={1} fill="rgba(255,255,255,0.15)" />
+    </svg>
+  );
+}
 
 interface SourceIconProps {
   source: string | null;
+  status?: TaskStatus;
   animate?: boolean;
 }
 
-export default function SourceIcon({ source, animate = true }: SourceIconProps) {
+export default function SourceIcon({ source, status = "pending", animate = true }: SourceIconProps) {
   const key = source?.toLowerCase().replace(/[\s_]/g, "-") ?? "";
-  const icon = icons[key] || defaultIcon;
+  const color = SOURCE_COLORS[key] || DEFAULT_COLOR;
+  const animClass = animate ? status : "";
 
   return (
-    <div className={`source-icon ${animate ? "bounce" : ""}`}>
-      {icon}
+    <div className={`source-icon ${animClass}`}>
+      <PixelMonster color={color} status={status} />
     </div>
   );
 }

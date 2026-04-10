@@ -14,24 +14,56 @@
   height: 100%;
 }
 
-.source-icon.bounce {
-  animation: iconBounce 1.8s ease-in-out 3;
+/* Running: gentle hop */
+.source-icon.running {
+  animation: monsterHop 1s ease-in-out infinite;
 }
 
-@keyframes iconBounce {
+@keyframes monsterHop {
   0%, 100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
-  15% {
-    transform: translateY(-6px) scale(1.1);
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Success: celebratory bounce */
+.source-icon.success {
+  animation: monsterBounce 0.6s ease-out 2;
+}
+
+@keyframes monsterBounce {
+  0% {
+    transform: scale(1) translateY(0);
   }
   30% {
-    transform: translateY(0) scale(1);
+    transform: scale(1.15) translateY(-5px);
   }
-  45% {
-    transform: translateY(-3px) scale(1.05);
+  50% {
+    transform: scale(0.95) translateY(0);
   }
-  60% {
-    transform: translateY(0) scale(1);
+  70% {
+    transform: scale(1.05) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Failed: shake */
+.source-icon.failed {
+  animation: monsterShake 0.4s ease-in-out 3;
+}
+
+@keyframes monsterShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
   }
 }
