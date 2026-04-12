@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": ".cursor/hooks/runPokepokeNotify.sh",
+        "timeout": 8
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": ".cursor/hooks/runPokepokeNotify.sh",
+        "timeout": 8
+      }
+    ]
+  }
+}

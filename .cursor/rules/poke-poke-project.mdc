@@ -1,0 +1,32 @@
+---
+description: PokePoke（poke-poke）项目上下文与开发约定
+alwaysApply: true
+---
+
+# PokePoke / poke-poke
+
+桌面端应用：**Tauri v2** + **React 19** + **TypeScript** + **Vite 7**。产品名 `PokePoke`，包标识 `com.pokepoke.app`。开发时前端默认地址 `http://localhost:1420`（与 `src-tauri/tauri.conf.json` 中 `devUrl` 一致）。
+
+## 目录
+
+- `src/`：React 前端（入口 `main.tsx`、`App.tsx`；含 `panel/`、`popup/`、`clawd/` 等）
+- `src-tauri/`：Rust 后端与 Tauri 能力（如 `lib.rs`、`commands.rs`、`tray.rs`、`notifications.rs`、`http_server.rs` 等）
+
+## 常用命令
+
+- 仅前端热更新：`npm run dev`（或若使用 pnpm：`pnpm dev`）
+- 完整桌面调试：`npm run tauri dev`（需本机 Rust / Tauri 环境）
+- 构建：`npm run build`；预览构建产物：`npm run preview`
+
+说明：`tauri.conf.json` 里 `beforeDevCommand` / `beforeBuildCommand` 写的是 `pnpm`，若本机只用 npm，可自行与团队统一包管理器或改配置。
+
+## Cursor Hooks（与本仓库）
+
+- `.cursor/hooks.json`：在 **`stop`**（Agent 一轮跑完）与 **`sessionEnd`**（会话结束）时执行 `.cursor/hooks/runPokepokeNotify.sh` → `pokepokeCursorStop.py`，向 `127.0.0.1:9876`（再试 `9877`）`POST /notify`。
+- 必要条件：工作区 **已信任**；Cursor **Hooks 功能已开启**；PokePoke 必须用 **`npm run tauri dev`**（或安装版）运行（仅 `npm run dev` 无托盘也无 HTTP）。
+- 排查：Cursor 底部/输出里打开 **Hooks** 通道，看 `[pokepoke-hook]` 日志；若提示连不上 `/notify`，说明应用未起或端口被占用。
+
+## 协作偏好（与本仓库对话）
+
+- 说明与注释可用中文；代码风格与现有文件保持一致。
+- 改动尽量小、可读优先；不要随意删除他人注释。
