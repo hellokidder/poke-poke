@@ -126,6 +126,12 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
+.popup-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
+}
+
 .popup-dismiss {
   padding: 5px 16px;
   font-size: 12px;

@@ -9,7 +9,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
         .or_else(|_| Image::from_bytes(include_bytes!("../icons/tray-default.png")))
         .unwrap_or_else(|_| Image::from_bytes(include_bytes!("../icons/32x32.png")).unwrap());
 
-    TrayIconBuilder::new()
+    TrayIconBuilder::with_id("main")
         .icon(tray_icon)
         .icon_as_template(true)
         .tooltip("Poke Poke")

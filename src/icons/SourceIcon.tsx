@@ -16,7 +16,7 @@ const DEFAULT_COLOR = "#88AAFF";
 
 // 16x12 pixel grid: 1 = body color, 0 = empty (filled by expression overlay)
 const BODY: number[][] = [
-  [0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0], // row 0:  horns
+  [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], // row 0:  dome top (smooth, no horns)
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0], // row 1:  head top
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0], // row 2:  head
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // row 3:  face
@@ -26,8 +26,8 @@ const BODY: number[][] = [
   [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1], // row 7:  mouth top
   [1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1], // row 8:  mouth bottom
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0], // row 9:  body taper
-  [0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0], // row 10: feet
-  [0,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0], // row 11: feet tips
+  [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0], // row 10: 5 tentacle tops (symmetric)
+  [0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0], // row 11: 5 tentacle tips
 ];
 
 type Pixel = [number, number, string];

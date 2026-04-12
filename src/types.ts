@@ -11,4 +11,6 @@ export interface Task {
   read: boolean;
   created_at: string;
   updated_at: string;
+  terminal_tty: string | null;
+  workspace_path: string | null;
 }

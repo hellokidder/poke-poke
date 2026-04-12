@@ -42,6 +42,10 @@ pub struct Task {
     pub read: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub terminal_tty: Option<String>,
+    #[serde(default)]
+    pub workspace_path: Option<String>,
 }
 
 pub struct TaskStore {
@@ -87,6 +91,8 @@ impl TaskStore {
         source: Option<String>,
         priority: Priority,
         status: TaskStatus,
+        terminal_tty: Option<String>,
+        workspace_path: Option<String>,
     ) -> UpsertResult {
         // Try to find existing task by task_id
         if let Some(existing) = self.tasks.iter_mut().find(|t| t.task_id == task_id) {
@@ -99,6 +105,12 @@ impl TaskStore {
             existing.priority = priority;
             existing.status = status;
             existing.updated_at = Utc::now();
+            if terminal_tty.is_some() {
+                existing.terminal_tty = terminal_tty;
+            }
+            if workspace_path.is_some() {
+                existing.workspace_path = workspace_path;
+            }
             // Mark unread when transitioning to terminal state
             if existing.status.is_terminal() && !prev_status.is_terminal() {
                 existing.read = false;
@@ -123,6 +135,8 @@ impl TaskStore {
                 read: false,
                 created_at: now,
                 updated_at: now,
+                terminal_tty,
+                workspace_path,
             };
             self.tasks.insert(0, task.clone());
             self.save();

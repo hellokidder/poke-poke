@@ -40,6 +40,7 @@ pub fn run() {
             commands::mark_notification_read,
             commands::mark_all_read,
             commands::close_popup_window,
+            commands::open_task_source,
         ])
         .run(tauri::generate_context!())
         .expect("error while running PokePoke");

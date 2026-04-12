@@ -31,6 +31,10 @@ struct NotifyRequest {
     priority: Option<String>,
     #[serde(default)]
     status: Option<String>,
+    #[serde(default)]
+    terminal_tty: Option<String>,
+    #[serde(default)]
+    workspace_path: Option<String>,
 }
 
 pub async fn start(app: AppHandle, store: Arc<Mutex<TaskStore>>, popup_list: PopupList) {
@@ -85,7 +89,16 @@ async fn handle_notify(
 
     let result = {
         let mut store = state.store.lock().unwrap();
-        store.upsert_task(req.task_id, req.title, req.message, req.source, priority, status)
+        store.upsert_task(
+            req.task_id,
+            req.title,
+            req.message,
+            req.source,
+            priority,
+            status,
+            req.terminal_tty,
+            req.workspace_path,
+        )
     };
 
     let _ = state.app.emit("notifications-updated", ());
