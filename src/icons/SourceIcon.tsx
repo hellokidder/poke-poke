@@ -14,6 +14,16 @@ const SOURCE_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = "#88AAFF";
 
+/** Hash a string to a vibrant HSL color (fixed saturation/lightness for dark bg) */
+function hashColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = ((hash % 360) + 360) % 360;
+  return `hsl(${hue}, 65%, 60%)`;
+}
+
 // 16x12 pixel grid: 1 = body color, 0 = empty (filled by expression overlay)
 const BODY: number[][] = [
   [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0], // row 0:  dome top (smooth, no horns)
@@ -105,11 +115,13 @@ interface SourceIconProps {
   source: string | null;
   status?: TaskStatus;
   animate?: boolean;
+  /** Unique seed (e.g. task_id) to generate a distinct color per session */
+  colorSeed?: string;
 }
 
-export default function SourceIcon({ source, status = "pending", animate = true }: SourceIconProps) {
+export default function SourceIcon({ source, status = "pending", animate = true, colorSeed }: SourceIconProps) {
   const key = source?.toLowerCase().replace(/[\s_]/g, "-") ?? "";
-  const color = SOURCE_COLORS[key] || DEFAULT_COLOR;
+  const color = colorSeed ? hashColor(colorSeed) : (SOURCE_COLORS[key] || DEFAULT_COLOR);
   const animClass = animate ? status : "";
 
   return (

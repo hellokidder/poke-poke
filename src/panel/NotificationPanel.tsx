@@ -99,7 +99,7 @@ export default function NotificationPanel() {
                     onClick={() => !t.read && t.status !== "pending" && t.status !== "running" && handleMarkRead(t.id)}
                   >
                     <StatusIndicator status={t.status} />
-                    <SourceIcon source={t.source} status={t.status} />
+                    <SourceIcon source={t.source} status={t.status} colorSeed={t.task_id} />
                     <div className="item-content">
                       <div className="item-header">
                         <span className="item-title">{t.title}</span>

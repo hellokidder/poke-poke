@@ -60,7 +60,7 @@ export default function PopupWindow() {
       <div className="popup-glow" />
       <div className="popup-body">
         <div className="popup-left">
-          <SourceIcon source={task.source} status={task.status} />
+          <SourceIcon source={task.source} status={task.status} colorSeed={task.task_id} />
         </div>
         <div className="popup-right">
           <div className="popup-header">
