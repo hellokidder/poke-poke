@@ -1,7 +1,9 @@
-use crate::notifications::Task;
+use crate::notifications::{Task, TaskStore};
+use crate::tray;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const POPUP_WIDTH: f64 = 360.0;
 const POPUP_HEIGHT: f64 = 150.0;
@@ -31,12 +33,25 @@ pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList) {
         .transparent(true)
         .shadow(false)
         .visible(true)
+        .accept_first_mouse(true)
         .build();
 
     match window {
         Ok(_) => {
             if let Ok(mut list) = popup_list.lock() {
                 list.push(label);
+            }
+
+            // Auto-dismiss: monitor if the user switches to the matching terminal
+            if let Some(ref tty) = task.terminal_tty {
+                if !tty.is_empty() {
+                    start_focus_monitor(
+                        app.clone(),
+                        task.id.clone(),
+                        tty.clone(),
+                        popup_list.clone(),
+                    );
+                }
             }
         }
         Err(e) => {
@@ -132,20 +147,66 @@ fn animate_reposition(app: &AppHandle, popup_list: &PopupList, removed_idx: usiz
     }
 }
 
-fn reposition_popups(app: &AppHandle, popup_list: &PopupList) {
-    let labels = if let Ok(list) = popup_list.lock() {
-        list.clone()
-    } else {
-        return;
-    };
+/// Poll every second to check if the user switched to the terminal
+/// matching this popup's tty. If so, auto-dismiss the popup.
+fn start_focus_monitor(app: AppHandle, task_id: String, tty: String, popup_list: PopupList) {
+    std::thread::spawn(move || {
+        let label = format!("popup-{}", task_id);
 
-    let (screen_width, _) = get_screen_size(app);
-    let x = screen_width - POPUP_WIDTH - POPUP_MARGIN;
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
 
-    for (i, label) in labels.iter().enumerate() {
-        let y = target_y(i);
-        if let Some(win) = app.get_webview_window(label) {
-            let _ = win.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)));
+            // Stop if popup was already closed (by click or other means)
+            if app.get_webview_window(&label).is_none() {
+                break;
+            }
+
+            if is_terminal_session_focused(&tty) {
+                // The user is looking at the matching terminal — dismiss popup
+                close_popup(&app, &task_id, &popup_list);
+
+                let store = app.state::<Arc<Mutex<TaskStore>>>();
+                let unread = {
+                    let mut s = store.lock().unwrap();
+                    s.mark_read(&task_id);
+                    s.unread_count()
+                };
+                tray::update_tray_icon(&app, unread);
+                let _ = app.emit("notifications-updated", ());
+                break;
+            }
         }
-    }
+    });
+}
+
+/// Check if the frontmost terminal app's current session matches the given tty.
+fn is_terminal_session_focused(tty: &str) -> bool {
+    let script = format!(
+        r#"tell application "System Events"
+    set frontApp to name of first application process whose frontmost is true
+end tell
+
+if frontApp is "iTerm2" then
+    tell application "iTerm2"
+        try
+            return (tty of current session of current tab of current window) is "{tty}"
+        end try
+    end tell
+else if frontApp is "Terminal" then
+    tell application "Terminal"
+        try
+            return (tty of selected tab of front window) is "{tty}"
+        end try
+    end tell
+end if
+return false"#,
+        tty = tty
+    );
+
+    Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "true")
+        .unwrap_or(false)
 }

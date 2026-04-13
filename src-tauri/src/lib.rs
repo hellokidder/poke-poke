@@ -41,9 +41,17 @@ pub fn run() {
             commands::mark_all_read,
             commands::close_popup_window,
             commands::open_task_source,
+            commands::focus_task_terminal,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running PokePoke");
+        .build(tauri::generate_context!())
+        .expect("error while building PokePoke")
+        .run(|_app_handle, event| {
+            // Prevent the app from exiting when all windows are closed.
+            // This is a tray-icon app — it should keep running in the background.
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
 
 fn dirs_next() -> Option<std::path::PathBuf> {

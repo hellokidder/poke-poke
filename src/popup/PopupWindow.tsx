@@ -34,20 +34,12 @@ export default function PopupWindow() {
     });
   }, []);
 
-  const handleDismiss = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!task) return;
-    setVisible(false);
-    await invoke("close_popup_window", { id: task.id });
-  };
-
   const handleClick = async () => {
     if (!task) return;
-    // Focus the originating terminal window
-    if (task.terminal_tty) {
-      await invoke("open_task_source", { id: task.id });
+    // Focus terminal if possible, then auto-close popup
+    if (task.terminal_tty || task.workspace_path) {
+      await invoke("focus_task_terminal", { id: task.id });
     }
-    // Dismiss after navigating
     setVisible(false);
     await invoke("close_popup_window", { id: task.id });
   };
@@ -57,13 +49,13 @@ export default function PopupWindow() {
   }
 
   const statusClass = task.status === "failed" ? "failed" : task.status === "success" ? "success" : "";
-  const clickable = !!task.terminal_tty;
+  const canFocus = !!(task.terminal_tty || task.workspace_path);
 
   return (
     <div
       className={`popup-container ${visible ? "show" : ""} ${statusClass}`}
-      onClick={clickable ? handleClick : undefined}
-      style={clickable ? { cursor: "pointer" } : undefined}
+      onClick={handleClick}
+      style={{ cursor: "pointer" }}
     >
       <div className="popup-glow" />
       <div className="popup-body">
@@ -80,12 +72,9 @@ export default function PopupWindow() {
           <div className="popup-message">{task.message}</div>
           <div className="popup-footer">
             <span className="popup-time">{timeAgo(task.created_at)}</span>
-            {clickable && (
+            {canFocus && (
               <span className="popup-hint">点击跳转</span>
             )}
-            <button className="popup-dismiss" onClick={handleDismiss}>
-              知道了
-            </button>
           </div>
         </div>
       </div>
