@@ -103,12 +103,21 @@ async fn handle_notify(
 
     let _ = state.app.emit("notifications-updated", ());
 
-    // Popup only when status transitions TO a terminal state
-    let should_popup = result.task.status.is_terminal()
-        && match &result.prev_status {
-            Some(prev) => prev != &result.task.status,
-            None => true, // new task created directly as success/failed
-        };
+    // Popup when status transitions TO a terminal state, or running → pending
+    let should_popup = {
+        let is_terminal_transition = result.task.status.is_terminal()
+            && match &result.prev_status {
+                Some(prev) => prev != &result.task.status,
+                None => true, // new task created directly as success/failed
+            };
+        let is_pending_transition = result.task.status == TaskStatus::Pending
+            && match &result.prev_status {
+                Some(TaskStatus::Running) => true, // running → pending
+                None => true,                      // new task created directly as pending
+                _ => false,
+            };
+        is_terminal_transition || is_pending_transition
+    };
 
     if should_popup {
         popup::show_popup(&state.app, &result.task, &state.popup_list);

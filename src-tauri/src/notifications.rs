@@ -115,6 +115,14 @@ impl TaskStore {
             if existing.status.is_terminal() && !prev_status.is_terminal() {
                 existing.read = false;
             }
+            // running → pending: needs user attention
+            if existing.status == TaskStatus::Pending && prev_status == TaskStatus::Running {
+                existing.read = false;
+            }
+            // pending → running: user handled it, auto-clear
+            if existing.status == TaskStatus::Running && prev_status == TaskStatus::Pending {
+                existing.read = true;
+            }
             let task = existing.clone();
             self.save();
             UpsertResult {
@@ -160,7 +168,7 @@ impl TaskStore {
 
     pub fn mark_all_read(&mut self) {
         for t in &mut self.tasks {
-            if t.status.is_terminal() {
+            if t.status.is_terminal() || t.status == TaskStatus::Pending {
                 t.read = true;
             }
         }
@@ -170,7 +178,7 @@ impl TaskStore {
     pub fn unread_count(&self) -> usize {
         self.tasks
             .iter()
-            .filter(|t| !t.read && t.status.is_terminal())
+            .filter(|t| !t.read && (t.status.is_terminal() || t.status == TaskStatus::Pending))
             .count()
     }
 

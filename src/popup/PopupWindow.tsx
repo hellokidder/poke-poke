@@ -48,7 +48,7 @@ export default function PopupWindow() {
     return <div className="popup-container" />;
   }
 
-  const statusClass = task.status === "failed" ? "failed" : task.status === "success" ? "success" : "";
+  const statusClass = task.status === "failed" ? "failed" : task.status === "success" ? "success" : task.status === "pending" ? "pending" : "";
   const canFocus = !!(task.terminal_tty || task.workspace_path);
 
   return (
