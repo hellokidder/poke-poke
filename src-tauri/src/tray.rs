@@ -7,15 +7,14 @@ use tauri::{
 };
 
 pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
-    let tray_icon = Image::from_path("icons/tray-default.png")
-        .or_else(|_| Image::from_bytes(include_bytes!("../icons/tray-default.png")))
+    let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-default.png"))
         .unwrap_or_else(|_| Image::from_bytes(include_bytes!("../icons/32x32.png")).unwrap());
 
     let menu = build_tray_menu(app)?;
 
     TrayIconBuilder::with_id("main")
         .icon(tray_icon)
-        .icon_as_template(true)
+        .icon_as_template(false)
         .tooltip("Poke Poke")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -173,21 +172,12 @@ fn get_screen_size(app: &AppHandle) -> (f64, f64) {
 }
 
 pub fn update_tray_icon(app: &AppHandle, unread_count: usize) {
-    let icon_bytes: &[u8] = if unread_count > 0 {
-        include_bytes!("../icons/tray-unread.png")
-    } else {
-        include_bytes!("../icons/tray-default.png")
-    };
-
-    if let Ok(icon) = Image::from_bytes(icon_bytes) {
-        if let Some(tray) = app.tray_by_id("main") {
-            let _ = tray.set_icon(Some(icon));
-            let tooltip = if unread_count > 0 {
-                format!("Poke Poke - {} unread", unread_count)
-            } else {
-                "Poke Poke".to_string()
-            };
-            let _ = tray.set_tooltip(Some(&tooltip));
-        }
+    if let Some(tray) = app.tray_by_id("main") {
+        let tooltip = if unread_count > 0 {
+            format!("Poke Poke - {} unread", unread_count)
+        } else {
+            "Poke Poke".to_string()
+        };
+        let _ = tray.set_tooltip(Some(&tooltip));
     }
 }

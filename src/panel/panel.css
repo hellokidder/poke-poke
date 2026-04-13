@@ -37,21 +37,10 @@
   letter-spacing: 0.02em;
 }
 
-.panel-mark-all {
+.connection-count {
   font-size: 12px;
-  padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  color: #88aaff;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.02em;
-}
-
-.panel-mark-all:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(100, 140, 255, 0.2);
 }
 
 .panel-list {
@@ -76,71 +65,43 @@
   font-size: 14px;
 }
 
-/* Section headers */
-.section-header {
-  padding: 12px 18px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.4);
+/* Session items */
+.session-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.section-count {
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 6px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.panel-section + .panel-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  margin-top: 4px;
-}
-
-/* Task items */
-.panel-item {
-  display: flex;
-  align-items: flex-start;
-  padding: 10px 18px;
-  gap: 10px;
+  padding: 12px 18px;
+  gap: 12px;
   cursor: pointer;
   transition: background 0.15s ease;
-  position: relative;
 }
 
-.panel-item:hover {
+.session-item:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.panel-item.read {
+.session-item.inactive {
   opacity: 0.45;
 }
 
-.panel-item .source-icon {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  margin-top: 1px;
+.session-item .source-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
 }
 
-.item-content {
+.session-info {
   flex: 1;
   min-width: 0;
 }
 
-.item-header {
+.session-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
-.item-title {
+.session-project {
   font-weight: 600;
   font-size: 13px;
   white-space: nowrap;
@@ -148,79 +109,45 @@
   text-overflow: ellipsis;
 }
 
-.item-source {
-  font-size: 10px;
-  padding: 1px 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  color: #888;
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.item-message {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+.session-path {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
 }
 
-.item-time {
+.session-time {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.25);
-  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.2);
+  margin-top: 2px;
 }
 
-/* Status indicators */
-.status-indicator {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  display: flex;
+/* Status dot */
+.status-dot {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.dot-inner {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  font-size: 12px;
-  font-weight: 700;
-  margin-top: 5px;
+  transition: background 0.3s ease;
 }
 
-.status-indicator.pending .pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(150, 170, 220, 0.6);
-  animation: pulse 2s ease-in-out infinite;
+.status-dot.active .dot-inner {
+  animation: dotPulse 2s ease-in-out infinite;
 }
 
-.status-indicator.running .spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(136, 170, 255, 0.2);
-  border-top-color: #88aaff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.status-indicator.success {
-  color: #4ade80;
-}
-
-.status-indicator.failed {
-  color: #f87171;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.1); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
 /* Footer */

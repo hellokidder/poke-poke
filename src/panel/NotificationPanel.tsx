@@ -18,25 +18,38 @@ function timeAgo(dateStr: string): string {
   return `${days} 天前`;
 }
 
-function StatusIndicator({ status }: { status: TaskStatus }) {
-  switch (status) {
-    case "pending":
-      return <div className="status-indicator pending"><div className="pulse-dot" /></div>;
-    case "running":
-      return <div className="status-indicator running"><div className="spinner" /></div>;
-    case "success":
-      return <div className="status-indicator success">✓</div>;
-    case "failed":
-      return <div className="status-indicator failed">✗</div>;
-  }
+function StatusDot({ status }: { status: TaskStatus }) {
+  const config: Record<TaskStatus, { color: string; label: string; animate: boolean }> = {
+    running: { color: "#4ade80", label: "运行中", animate: true },
+    pending: { color: "#facc15", label: "等待中", animate: true },
+    success: { color: "rgba(255,255,255,0.25)", label: "已完成", animate: false },
+    failed: { color: "#f87171", label: "失败", animate: false },
+  };
+  const c = config[status];
+  return (
+    <span className={`status-dot ${c.animate ? "active" : ""}`} title={c.label}>
+      <span className="dot-inner" style={{ background: c.color }} />
+    </span>
+  );
 }
 
-const sectionConfig = [
-  { key: "active", label: "进行中", filter: (t: Task) => t.status === "pending" || t.status === "running" },
-  { key: "failed", label: "失败", filter: (t: Task) => t.status === "failed" && !t.read },
-  { key: "success", label: "成功", filter: (t: Task) => t.status === "success" && !t.read },
-  { key: "read", label: "已读", filter: (t: Task) => t.read && t.status !== "pending" && t.status !== "running" },
-] as const;
+/** Extract short project name from title like "Claude Code: my-project" */
+function projectName(task: Task): string {
+  const match = task.title.match(/:\s*(.+)/);
+  return match ? match[1] : task.title;
+}
+
+/** Extract short workspace display path */
+function workspacePath(task: Task): string {
+  if (!task.workspace_path) return "";
+  // Show ~ for home dir, keep last 2 segments
+  const p = task.workspace_path.replace(/^\/Users\/[^/]+/, "~");
+  return p;
+}
+
+function isActive(t: Task): boolean {
+  return t.status === "running" || t.status === "pending";
+}
 
 export default function NotificationPanel() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -56,68 +69,52 @@ export default function NotificationPanel() {
     };
   }, []);
 
-  const handleMarkRead = async (id: string) => {
-    await invoke("mark_notification_read", { id });
-    loadTasks();
+  const handleClick = (id: string) => {
+    invoke("open_task_source", { id });
   };
 
-  const handleMarkAllRead = async () => {
-    await invoke("mark_all_read");
-    loadTasks();
-  };
+  // Sort by created_at desc (newest first, fixed order)
+  const sorted = [...tasks].sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
-  const unreadCount = tasks.filter((t) => !t.read && (t.status === "success" || t.status === "failed")).length;
+  const activeCount = sorted.filter(isActive).length;
 
   return (
     <div className="panel-container">
       <div className="panel-header">
         <h1 className="panel-title">Poke Poke</h1>
-        {unreadCount > 0 && (
-          <button className="panel-mark-all" onClick={handleMarkAllRead}>
-            全部已读
-          </button>
-        )}
+        <span className="connection-count">
+          {activeCount > 0 ? `${activeCount} 个活跃` : "无活跃连接"}
+        </span>
       </div>
 
       <div className="panel-list">
-        {tasks.length === 0 ? (
-          <div className="panel-empty">暂无任务</div>
+        {sorted.length === 0 ? (
+          <div className="panel-empty">暂无连接的会话</div>
         ) : (
-          sectionConfig.map(({ key, label, filter }) => {
-            const items = tasks.filter(filter);
-            if (items.length === 0) return null;
-            return (
-              <div key={key} className={`panel-section section-${key}`}>
-                <div className="section-header">
-                  <span>{label}</span>
-                  <span className="section-count">{items.length}</span>
+          sorted.map((t) => (
+            <div
+              key={t.id}
+              className={`session-item ${isActive(t) ? "" : "inactive"}`}
+              onClick={() => handleClick(t.id)}
+            >
+              <SourceIcon source={t.source} status={t.status} colorSeed={t.task_id} />
+              <div className="session-info">
+                <div className="session-header">
+                  <span className="session-project">{projectName(t)}</span>
+                  <StatusDot status={t.status} />
                 </div>
-                {items.map((t) => (
-                  <div
-                    key={t.id}
-                    className={`panel-item ${t.read ? "read" : ""}`}
-                    onClick={() => !t.read && t.status !== "pending" && t.status !== "running" && handleMarkRead(t.id)}
-                  >
-                    <StatusIndicator status={t.status} />
-                    <SourceIcon source={t.source} status={t.status} colorSeed={t.task_id} />
-                    <div className="item-content">
-                      <div className="item-header">
-                        <span className="item-title">{t.title}</span>
-                        {t.source && <span className="item-source">{t.source}</span>}
-                      </div>
-                      <div className="item-message">{t.message}</div>
-                      <div className="item-time">{timeAgo(t.updated_at)}</div>
-                    </div>
-                  </div>
-                ))}
+                <div className="session-path">{workspacePath(t)}</div>
+                <div className="session-time">{timeAgo(t.updated_at)}</div>
               </div>
-            );
-          })
+            </div>
+          ))
         )}
       </div>
 
       <div className="panel-footer">
-        {unreadCount > 0 ? `${unreadCount} 条未读` : "全部已读"}
+        {sorted.length} 个会话
       </div>
     </div>
   );

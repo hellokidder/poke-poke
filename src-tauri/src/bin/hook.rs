@@ -13,7 +13,7 @@ use std::process::Command;
 
 const POKE_PORTS: &[u16] = &[9876, 9877];
 const LOCK_DIR: &str = "/tmp";
-const HOOK_EVENTS: &[&str] = &["SessionStart", "PreToolUse", "Notification", "Stop"];
+const HOOK_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit", "Notification", "Stop"];
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -131,8 +131,11 @@ fn cmd_uninstall() {
     let content = fs::read_to_string(&settings_path).unwrap_or_else(|_| "{}".into());
     let mut settings: Value = serde_json::from_str(&content).unwrap_or_else(|_| serde_json::json!({}));
 
+    // Also clean up legacy event names no longer in HOOK_EVENTS
+    const LEGACY_EVENTS: &[&str] = &["PreToolUse", "PostToolUse"];
+
     if let Some(hooks) = settings.get_mut("hooks").and_then(|h| h.as_object_mut()) {
-        for event in HOOK_EVENTS {
+        for event in HOOK_EVENTS.iter().chain(LEGACY_EVENTS.iter()) {
             if let Some(event_hooks) = hooks.get_mut(*event).and_then(|v| v.as_array_mut()) {
                 event_hooks.retain(|group| !contains_poke_hook(group));
             }
@@ -230,12 +233,12 @@ fn hook_mode() {
 
     match event {
         "SessionStart" => handle_session_start(&task_id, &project, &cwd),
-        "PreToolUse" => handle_pre_tool_use(&task_id, &project, &cwd),
         "Notification" => {
             let message = data["message"].as_str().unwrap_or("");
-            handle_notification(&task_id, &project, message);
+            handle_notification(&task_id, &project, message, &cwd);
         }
-        "Stop" => handle_stop(&task_id, &project),
+        "UserPromptSubmit" => handle_user_prompt_submit(&task_id, &project, &cwd),
+        "Stop" => handle_stop(&task_id, &project, &cwd),
         _ => {}
     }
 }
@@ -258,17 +261,21 @@ fn handle_session_start(task_id: &str, project: &str, cwd: &str) {
     post_notify(&payload);
 }
 
-fn handle_pre_tool_use(task_id: &str, project: &str, cwd: &str) {
-    let pending_flag = flag_path(task_id, "pending");
+fn handle_user_prompt_submit(task_id: &str, project: &str, cwd: &str) {
     let lock_file = flag_path(task_id, "registered");
 
-    // If Notification set a pending flag, reset to running
+    // Already registered — just ensure running status (clears pending if needed)
+    let pending_flag = flag_path(task_id, "pending");
     if pending_flag.exists() {
         let _ = fs::remove_file(&pending_flag);
+    }
+
+    if lock_file.exists() {
+        // Still send running status to update the session
         let payload = serde_json::json!({
             "task_id": task_id,
             "title": format!("Claude Code: {}", project),
-            "message": format!("Resumed working...\n{}", cwd),
+            "message": format!("Working...\n{}", cwd),
             "source": "claude-code",
             "status": "running",
         });
@@ -276,10 +283,6 @@ fn handle_pre_tool_use(task_id: &str, project: &str, cwd: &str) {
         return;
     }
 
-    // Only register once per session
-    if lock_file.exists() {
-        return;
-    }
     let _ = fs::write(&lock_file, std::process::id().to_string());
 
     let tty = get_tty();
@@ -297,31 +300,41 @@ fn handle_pre_tool_use(task_id: &str, project: &str, cwd: &str) {
     post_notify(&payload);
 }
 
-fn handle_notification(task_id: &str, project: &str, message: &str) {
+fn handle_notification(task_id: &str, project: &str, message: &str, cwd: &str) {
     let flag = flag_path(task_id, "pending");
     let _ = fs::write(&flag, message);
 
-    let payload = serde_json::json!({
+    let tty = get_tty();
+    let mut payload = serde_json::json!({
         "task_id": task_id,
         "title": format!("Claude Code: {}", project),
         "message": message,
         "source": "claude-code",
         "status": "pending",
+        "workspace_path": cwd,
     });
+    if let Some(ref t) = tty {
+        payload["terminal_tty"] = Value::String(t.clone());
+    }
     post_notify(&payload);
 }
 
-fn handle_stop(task_id: &str, project: &str) {
+fn handle_stop(task_id: &str, project: &str, cwd: &str) {
     let _ = fs::remove_file(flag_path(task_id, "registered"));
     let _ = fs::remove_file(flag_path(task_id, "pending"));
 
-    let payload = serde_json::json!({
+    let tty = get_tty();
+    let mut payload = serde_json::json!({
         "task_id": task_id,
         "title": format!("Claude Code: {}", project),
         "message": "Session completed",
         "source": "claude-code",
         "status": "success",
+        "workspace_path": cwd,
     });
+    if let Some(ref t) = tty {
+        payload["terminal_tty"] = Value::String(t.clone());
+    }
     post_notify(&payload);
 }
 
