@@ -206,6 +206,24 @@ fn run_applescript_bool(script: &str) -> bool {
 }
 
 #[tauri::command]
+pub fn check_cc_integration() -> serde_json::Value {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+    let hook_path = std::path::PathBuf::from(&home).join(".local/bin/poke-hook");
+    if !hook_path.exists() {
+        return serde_json::json!({"installed": false, "hooks_configured": false, "connected": false});
+    }
+    Command::new(&hook_path)
+        .arg("--check")
+        .output()
+        .ok()
+        .and_then(|o| {
+            let out = String::from_utf8_lossy(&o.stdout);
+            serde_json::from_str(out.trim()).ok()
+        })
+        .unwrap_or(serde_json::json!({"installed": false, "hooks_configured": false, "connected": false}))
+}
+
+#[tauri::command]
 pub fn close_popup_window(
     id: String,
     store: State<'_, Arc<Mutex<TaskStore>>>,

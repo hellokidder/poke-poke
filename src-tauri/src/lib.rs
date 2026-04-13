@@ -42,6 +42,7 @@ pub fn run() {
             commands::close_popup_window,
             commands::open_task_source,
             commands::focus_task_terminal,
+            commands::check_cc_integration,
         ])
         .build(tauri::generate_context!())
         .expect("error while building PokePoke")
