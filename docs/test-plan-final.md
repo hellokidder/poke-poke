@@ -55,33 +55,26 @@
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 1 | 新任务插入 | `is_new == true`, `read == false` |
+| 1 | 新任务插入 | `is_new == true`，列表新增一条记录 |
 | 2 | 同 `task_id` 再次 upsert | `is_new == false`, 只有一条记录 |
-| 3 | Running → Success | `read = false`（终态转换标记未读） |
-| 4 | Running → Failed | `read = false` |
-| 5 | Running → Pending | `read = false`（权限等待，需要关注） |
-| 6 | Pending → Running | `read = true`（用户恢复，自动已读） |
-| 7 | Success → Running | `read = true` |
-| 8 | Failed → Running | `read = true` |
-| 9 | Running → Running | `read` 不变（无匹配分支） |
+| 3 | Running → Success | 状态更新为 `Success` |
+| 4 | Running → Failed | 状态更新为 `Failed` |
+| 5 | Running → Pending | 状态更新为 `Pending` |
+| 6 | Pending → Running | 状态更新为 `Running` |
+| 7 | Success → Running | 状态更新为 `Running` |
+| 8 | Failed → Running | 状态更新为 `Running` |
+| 9 | Running → Running | 状态保持 `Running` |
 | 10 | `source: None` 更新 | 不覆盖已有 source |
 | 11 | `terminal_tty: None` 更新 | 不覆盖已有 tty |
 | 12 | `prev_status` 返回值 | 等于更新前的状态 |
 
-#### unread_count()（3 个）
+#### unread_count()（不纳入当前计划）
 
-| # | 场景 | 预期 |
-|---|------|------|
-| 13 | 终态 + Pending 未读 | 计入 |
-| 14 | 已读任务 | 不计入 |
-| 15 | Running 状态 | 永远不计入（即使 `read == false`） |
+当前产品设计不包含未读计数逻辑，`unread_count` 相关测试不纳入当前计划。
 
-#### mark_read / mark_all_read（2 个）
+#### mark_read / mark_all_read（不纳入当前计划）
 
-| # | 场景 | 预期 |
-|---|------|------|
-| 16 | `mark_read` 存在 / 不存在 | 返回 true / false |
-| 17 | `mark_all_read` | 只标记终态和 Pending（不标记 Running） |
+当前产品设计不包含标记已读逻辑，`mark_read` / `mark_all_read` 相关测试不纳入当前计划。
 
 #### cleanup_expired()（3 个）
 
@@ -180,7 +173,7 @@ pub fn should_show_popup(status: &TaskStatus, prev: Option<&TaskStatus>, is_new:
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 50 | Cursor `stop` + `hookStatus:"success"` | status = success |
+| 50 | Cursor `stop` + `hookStatus:"completed"` | status = success |
 | 51 | CC `Notification` | source = `claude-code`，保留原始 message |
 | 52 | Codex `Stop` | task_id 前缀为 `codex-` |
 | 53 | task_id 生成 | source prefix + session_id 拼接正确 |
@@ -264,7 +257,6 @@ pub fn should_show_popup(status: &TaskStatus, prev: Option<&TaskStatus>, is_new:
 
 **重点覆盖：**
 - `save_settings` → 验证依次触发 `apply_shortcut` + emit `settings-updated`
-- `close_popup_window` → 验证 `mark_read` + `close_popup` + `update_tray_icon` 编排顺序
 
 **不覆盖：**
 - 纯转发命令（`get_notifications`, `get_settings` 等）
@@ -307,15 +299,15 @@ pub fn should_show_popup(status: &TaskStatus, prev: Option<&TaskStatus>, is_new:
 - [ ] 一键安装 CC hook → 托盘菜单状态刷新
 - [ ] 一键卸载 CC hook → 状态回退
 - [ ] 一键安装 / 卸载 Codex hook
-- [ ] Popup 弹出位置正确（右下角堆叠）
+- [ ] Popup 弹出位置正确（右上角向下堆叠）
 - [ ] Popup 点击 → 聚焦对应终端（iTerm2 / Terminal.app）
 - [ ] Popup 用户切到对应终端后自动消失
 - [ ] Popup 超时自动消失（设置非 0 时）
 - [ ] 设置页修改音效 → 预览播放 → 重启后持久化
 - [ ] 设置页修改语言 → 全局 UI 切换
-- [ ] 快捷键录入 → 全局生效 → 切换面板可见性
+- [ ] 快捷键录入 → 全局生效 → 切换设置窗口可见性
 - [ ] 开机自启动开关 → 重启 macOS 验证
-- [ ] 通知面板按时间倒序排列
+- [ ] 通知面板按注册时间先后排列（先注册的在上）
 - [ ] 终态任务显示删除按钮，点击删除生效
 - [ ] port 9876 被占用时 fallback 到 9877
 

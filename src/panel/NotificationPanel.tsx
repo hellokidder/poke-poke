@@ -90,7 +90,7 @@ export default function NotificationPanel() {
   };
 
   const sorted = [...tasks].sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
   const activeCount = sorted.filter(isActive).length;
