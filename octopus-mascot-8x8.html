@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PokePoke 8x8 俏皮章鱼候选板</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1022;
+        --panel: rgba(19, 24, 49, 0.88);
+        --panel-border: rgba(132, 160, 255, 0.18);
+        --card: rgba(33, 40, 76, 0.9);
+        --card-hover: rgba(46, 56, 102, 0.96);
+        --text: #edf3ff;
+        --muted: #9daccc;
+        --soft: #6f83b7;
+        --shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(119, 130, 255, 0.18), transparent 32%),
+          radial-gradient(circle at right bottom, rgba(112, 236, 211, 0.14), transparent 28%),
+          linear-gradient(180deg, #16193a 0%, var(--bg) 48%, #0a0c18 100%);
+        color: var(--text);
+        font-family:
+          "Inter",
+          "SF Pro Display",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+      }
+
+      .page {
+        max-width: 1640px;
+        margin: 0 auto;
+        padding: 28px 20px 36px;
+      }
+
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+      }
+
+      .hero h1 {
+        margin: 0 0 10px;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1.05;
+        letter-spacing: 0.04em;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 760px;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 15px;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 8px;
+        background: rgba(83, 98, 176, 0.3);
+        border: 1px solid rgba(135, 157, 245, 0.16);
+        color: #edf3ff;
+        font-family:
+          "JetBrains Mono",
+          "SFMono-Regular",
+          "Consolas",
+          monospace;
+        font-size: 0.92em;
+      }
+
+      .chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+
+      .chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(93, 109, 188, 0.18);
+        border: 1px solid rgba(141, 162, 255, 0.18);
+        color: #d7e2ff;
+        font-size: 13px;
+      }
+
+      .current-panel {
+        margin-bottom: 18px;
+        padding: 18px;
+      }
+
+      .current-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .current-meta strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+
+      .current-meta span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .current-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .current-preview {
+        padding: 18px;
+        border-radius: 20px;
+        background: rgba(31, 38, 72, 0.9);
+        border: 1px solid rgba(118, 137, 215, 0.14);
+      }
+
+      .current-preview-canvas {
+        width: min(100%, 220px);
+        aspect-ratio: 16 / 12;
+        margin: 16px auto 14px;
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 20px;
+        padding: 16px;
+        background:
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent 58%),
+          linear-gradient(180deg, rgba(61, 72, 125, 0.88), rgba(24, 29, 57, 0.96));
+        border: 1px solid rgba(132, 160, 255, 0.16);
+      }
+
+      .current-preview-title {
+        margin: 0 0 8px;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      .current-preview-note,
+      .current-preview-footnote {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .current-preview-footnote {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(124, 146, 230, 0.14);
+        font-size: 12px;
+        color: #91a4d4;
+      }
+
+      .current-states {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .current-status-card {
+        appearance: none;
+        border: 1px solid rgba(122, 144, 233, 0.14);
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 48%),
+          linear-gradient(180deg, rgba(58, 69, 127, 0.82), var(--card));
+        padding: 12px;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        font: inherit;
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      .current-status-card:hover,
+      .current-status-card:focus-visible,
+      .current-status-card.is-active {
+        transform: translateY(-2px);
+        border-color: var(--state-color, rgba(170, 186, 255, 0.44));
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+        outline: none;
+      }
+
+      .current-status-card canvas {
+        width: min(100%, 108px);
+        aspect-ratio: 16 / 12;
+        display: block;
+        margin: 0 auto 10px;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 14px;
+        background: radial-gradient(circle at top, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02));
+        padding: 10px;
+      }
+
+      .current-status-kicker {
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        color: #9aacd4;
+        margin-bottom: 6px;
+      }
+
+      .current-status-name {
+        font-size: 14px;
+        color: #f1f5ff;
+        margin-bottom: 6px;
+      }
+
+      .current-status-note {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .derivative-panel {
+        margin-bottom: 18px;
+        padding: 18px;
+      }
+
+      .derivative-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .derivative-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .derivative-card {
+        appearance: none;
+        border: 1px solid rgba(122, 144, 233, 0.14);
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 48%),
+          linear-gradient(180deg, rgba(53, 64, 116, 0.84), rgba(29, 35, 68, 0.94));
+        padding: 12px;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        font: inherit;
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      .derivative-card:hover,
+      .derivative-card:focus-visible,
+      .derivative-card.is-active {
+        transform: translateY(-2px);
+        border-color: var(--variant-glow, rgba(170, 186, 255, 0.44));
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+        outline: none;
+      }
+
+      .derivative-card canvas {
+        width: min(100%, 112px);
+        aspect-ratio: 1 / 1;
+        display: block;
+        margin: 0 auto 12px;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 14px;
+        background: radial-gradient(circle at top, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+        padding: 6px;
+      }
+
+      .derivative-card-id {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: #9aacd4;
+        margin-bottom: 6px;
+      }
+
+      .derivative-card-name {
+        font-size: 14px;
+        color: #f3f6ff;
+        margin-bottom: 6px;
+      }
+
+      .derivative-card-note {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .derivative-preview {
+        padding: 20px;
+        border-radius: 24px;
+        background: rgba(28, 34, 67, 0.92);
+        border: 1px solid rgba(118, 137, 215, 0.14);
+      }
+
+      .derivative-preview-canvas {
+        width: min(100%, 264px);
+        aspect-ratio: 1 / 1;
+        margin: 18px auto 16px;
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 24px;
+        padding: 14px;
+        background:
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 58%),
+          linear-gradient(180deg, rgba(58, 68, 119, 0.92), rgba(24, 29, 57, 0.96));
+        border: 1px solid rgba(132, 160, 255, 0.16);
+      }
+
+      .derivative-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(72, 88, 154, 0.42);
+        border: 1px solid rgba(135, 157, 245, 0.18);
+        color: #dce6ff;
+        font-size: 13px;
+      }
+
+      .derivative-kicker::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--derivative-accent, #7ff2ff);
+        box-shadow: 0 0 14px var(--derivative-accent, #7ff2ff);
+      }
+
+      .derivative-preview h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+
+      .derivative-preview .subtitle {
+        margin: 0 0 16px;
+        color: #d4defc;
+        font-size: 14px;
+      }
+
+      .derivative-preview p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+      }
+
+      .board-panel {
+        padding: 18px;
+      }
+
+      .board-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .board-meta strong {
+        display: block;
+        font-size: 16px;
+        margin-bottom: 4px;
+      }
+
+      .board-meta span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .board-hint {
+        color: #d4defc;
+        font-size: 13px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        background: rgba(63, 76, 133, 0.46);
+        border: 1px solid rgba(128, 148, 230, 0.2);
+      }
+
+      .board-frame {
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .axis-row,
+      .board {
+        min-width: 1160px;
+      }
+
+      .axis-row {
+        display: grid;
+        grid-template-columns: 136px repeat(8, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .axis-corner,
+      .axis-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        min-height: 58px;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .axis-corner {
+        background: rgba(42, 49, 90, 0.62);
+        border: 1px solid rgba(118, 137, 215, 0.14);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .axis-label {
+        background: rgba(53, 65, 120, 0.4);
+        border: 1px solid rgba(141, 162, 255, 0.16);
+        color: #e6eeff;
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 8px;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: 136px repeat(8, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .row-label,
+      .card {
+        min-height: 148px;
+        border-radius: 18px;
+      }
+
+      .row-label {
+        padding: 14px 14px 12px;
+        background: rgba(30, 37, 70, 0.9);
+        border: 1px solid rgba(118, 137, 215, 0.14);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .row-label strong {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+
+      .row-label span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .card {
+        appearance: none;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(122, 144, 233, 0.14);
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 48%),
+          linear-gradient(180deg, rgba(58, 69, 127, 0.82), var(--card));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 10px 12px;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          background 0.18s ease;
+      }
+
+      .card::after {
+        content: "";
+        position: absolute;
+        inset: auto 10px 10px 10px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+      }
+
+      .card:hover,
+      .card:focus-visible,
+      .card.is-active {
+        transform: translateY(-3px);
+        border-color: var(--glow, rgba(170, 186, 255, 0.44));
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.11), transparent 48%),
+          linear-gradient(180deg, rgba(70, 83, 148, 0.92), var(--card-hover));
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+        outline: none;
+      }
+
+      .card canvas {
+        width: min(100%, 98px);
+        aspect-ratio: 1 / 1;
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 12px;
+        background: radial-gradient(circle at top, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02));
+        padding: 6px;
+      }
+
+      .card-id {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: #97aadb;
+      }
+
+      .card-name {
+        text-align: center;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #f1f5ff;
+      }
+
+      .preview {
+        padding: 20px;
+        position: sticky;
+        top: 18px;
+      }
+
+      .preview-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(72, 88, 154, 0.42);
+        border: 1px solid rgba(135, 157, 245, 0.18);
+        color: #dce6ff;
+        font-size: 13px;
+      }
+
+      .preview-badge::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--preview-accent, #ffd86c);
+        box-shadow: 0 0 14px var(--preview-accent, #ffd86c);
+      }
+
+      .preview-canvas {
+        width: min(100%, 264px);
+        aspect-ratio: 1 / 1;
+        margin: 18px auto 16px;
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        border-radius: 24px;
+        padding: 16px;
+        background:
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent 58%),
+          linear-gradient(180deg, rgba(61, 72, 125, 0.9), rgba(24, 29, 57, 0.96));
+        border: 1px solid rgba(132, 160, 255, 0.16);
+      }
+
+      .preview h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+
+      .preview .subtitle {
+        margin: 0 0 16px;
+        color: #d4defc;
+        font-size: 14px;
+      }
+
+      .preview p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .detail-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .detail-item {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(35, 43, 82, 0.82);
+        border: 1px solid rgba(118, 137, 215, 0.14);
+      }
+
+      .detail-item strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+        color: #d9e4ff;
+      }
+
+      .detail-item span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .swatches {
+        display: flex;
+        gap: 10px;
+        margin-top: 2px;
+      }
+
+      .swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      }
+
+      .note {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(124, 146, 230, 0.14);
+        color: #91a4d4;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      @media (max-width: 1220px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .preview {
+          position: static;
+        }
+      }
+
+      @media (max-width: 980px) {
+        .current-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .derivative-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .current-states {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .derivative-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 700px) {
+        .page {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+
+        .current-panel,
+        .derivative-panel,
+        .board-panel,
+        .preview {
+          padding: 16px;
+        }
+
+        .current-states {
+          grid-template-columns: 1fr;
+        }
+
+        .derivative-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <h1>PokePoke 章鱼形象候选板</h1>
+          <p>
+            这是一个全新的 <code>8x8</code> 候选矩阵：总共 64 个俏皮像素章鱼方案。行是轮廓方向，列是性格方向，
+            你可以直接按编号筛选，比如先圈出 <code>A3 / D6 / H2</code> 这种候选，再继续往下收敛。这里的
+            <code>8x8</code> 指的是候选矩阵，不是单只章鱼的像素尺寸。
+          </p>
+          <div class="chips">
+            <div class="chip">8 行轮廓 x 8 列气质</div>
+            <div class="chip">单只章鱼为原创 18x18 像素风 sprite</div>
+            <div class="chip">hover 预览，点击锁定</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel current-panel">
+        <div class="current-meta">
+          <div>
+            <strong>当前在用的形象</strong>
+            <span>来自 <code>src/icons/SourceIcon.tsx</code>，也就是现在面板和弹窗里实际显示的那只像素小章鱼。</span>
+          </div>
+          <div class="board-hint">先拿现有形象做对照，再挑新的品牌方向会更稳。</div>
+        </div>
+
+        <div class="current-layout">
+          <div class="current-preview">
+            <div class="preview-badge" id="currentMascotBadge">当前在用</div>
+            <canvas class="current-preview-canvas" id="currentMascotCanvas" width="16" height="12"></canvas>
+            <h2 class="current-preview-title" id="currentMascotTitle">当前在用 · 待确认</h2>
+            <p class="current-preview-note" id="currentMascotSummary"></p>
+            <p class="current-preview-footnote">
+              实际产品里颜色会随 <code>source / task_id</code> 变化，这里固定成默认蓝色做对照。
+            </p>
+          </div>
+
+          <div class="current-states" id="currentMascotStates"></div>
+        </div>
+      </section>
+
+      <section class="panel derivative-panel">
+        <div class="board-meta">
+          <div>
+            <strong>C1 衍生探索</strong>
+            <span>围绕 <code>C1</code> 方向继续细化，只保留水滴弹轮廓的核心气质，统一去掉浅色描边，改成纯本体色 + 阴影收边。</span>
+          </div>
+          <div class="board-hint">这一组更适合继续往产品 mascot 收敛。</div>
+        </div>
+
+        <div class="derivative-layout">
+          <div class="derivative-grid" id="derivativeGrid"></div>
+
+          <aside class="derivative-preview">
+            <div class="derivative-kicker" id="derivativeBadge">C1 衍生</div>
+            <canvas class="derivative-preview-canvas" id="derivativeCanvas" width="18" height="18"></canvas>
+            <h2 id="derivativeTitle">C1-a</h2>
+            <p class="subtitle" id="derivativeSubtitle">原型收口</p>
+            <p id="derivativeSummary"></p>
+
+            <div class="detail-grid">
+              <div class="detail-item">
+                <strong>轮廓处理</strong>
+                <span id="derivativeShapeNote"></span>
+              </div>
+              <div class="detail-item">
+                <strong>气质判断</strong>
+                <span id="derivativeMoodNote"></span>
+              </div>
+              <div class="detail-item">
+                <strong>颜色策略</strong>
+                <span>统一不做浅色描边，只保留主体色、腮红和深色阴影收边。</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="panel board-panel">
+          <div class="board-meta">
+            <div>
+              <strong>候选矩阵</strong>
+              <span>从“最适合做主 mascot 的轮廓”与“最想传达的情绪”两个维度同时看。</span>
+            </div>
+            <div class="board-hint">建议先挑 3 个轮廓，再挑 2 个性格，组合会更快收敛。</div>
+          </div>
+
+          <div class="board-frame">
+            <div class="axis-row" id="columnLabels"></div>
+            <div class="board" id="board"></div>
+          </div>
+        </section>
+
+        <aside class="panel preview">
+          <div class="preview-badge" id="previewBadge">当前已选</div>
+          <canvas class="preview-canvas" id="previewCanvas" width="18" height="18"></canvas>
+          <h2 id="previewTitle">A1</h2>
+          <p class="subtitle" id="previewSubtitle">果冻团 x 招牌笑</p>
+          <p id="previewSummary"></p>
+
+          <div class="detail-grid">
+            <div class="detail-item">
+              <strong>轮廓方向</strong>
+              <span id="previewShape"></span>
+            </div>
+            <div class="detail-item">
+              <strong>性格方向</strong>
+              <span id="previewMood"></span>
+            </div>
+            <div class="detail-item">
+              <strong>配色感觉</strong>
+              <div class="swatches" id="previewSwatches"></div>
+            </div>
+          </div>
+
+          <div class="note">
+            如果你挑出几个编号，我可以下一步继续帮你把它们收敛成更统一的品牌形象，比如只保留一个轮廓、
+            统一配色、再放大成更正式的 logo / mascot 方案。
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const SPRITE_SIZE = 18;
+      const row = (...segments) => segments;
+
+      const SHAPES = [
+        {
+          name: "果冻团",
+          note: "最圆润、最亲和，适合当默认主 mascot。",
+          rows: [
+            row([8, 9]),
+            row([7, 10]),
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([2, 15]),
+            row([1, 16]),
+            row([1, 16]),
+            row([1, 16]),
+            row([2, 15]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([3, 4], [6, 7], [9, 10], [12, 13]),
+            row([2, 3], [5, 6], [8, 9], [11, 12], [14, 15]),
+            row([3, 3], [6, 6], [9, 9], [12, 12], [15, 15]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 11],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[5, 2], [6, 2], [5, 3], [6, 3]],
+          ornaments: [],
+          palette: {
+            body: "#ff89b4",
+            shadow: "#d95f8c",
+            highlight: "#ffc7dc",
+            ink: "#26172d",
+            blush: "#ffd7e5",
+            accent: "#ffe36e",
+            glow: "rgba(255, 137, 180, 0.42)",
+          },
+        },
+        {
+          name: "云朵帽",
+          note: "头顶更饱满，远看识别度强，适合产品招牌位。",
+          rows: [
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([1, 16]),
+            row([1, 16]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([4, 13]),
+            row([4, 13]),
+            row([5, 12]),
+            row([4, 5], [7, 8], [10, 11], [13, 14]),
+            row([3, 4], [6, 7], [9, 10], [12, 13], [15, 15]),
+            row([4, 4], [7, 7], [10, 10], [13, 13]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 10],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[6, 2], [7, 2], [8, 2], [6, 3]],
+          ornaments: [],
+          palette: {
+            body: "#ffb16b",
+            shadow: "#d8874e",
+            highlight: "#ffd8b5",
+            ink: "#312018",
+            blush: "#ffdcbc",
+            accent: "#fff2a2",
+            glow: "rgba(255, 177, 107, 0.4)",
+          },
+        },
+        {
+          name: "水滴弹",
+          note: "上尖下圆，动作感更强，看起来更机灵。",
+          rows: [
+            row([8, 9]),
+            row([7, 10]),
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([2, 15]),
+            row([1, 16]),
+            row([1, 16]),
+            row([2, 15]),
+            row([3, 14]),
+            row([4, 13]),
+            row([4, 13]),
+            row([4, 5], [7, 8], [10, 11], [13, 14]),
+            row([3, 4], [7, 8], [10, 11], [14, 15]),
+            row([4, 4], [8, 8], [11, 11], [14, 14]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 11],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[7, 2], [8, 2], [6, 3], [7, 3]],
+          ornaments: [],
+          palette: {
+            body: "#8d88ff",
+            shadow: "#665fd8",
+            highlight: "#c8c4ff",
+            ink: "#1d1840",
+            blush: "#e1dfff",
+            accent: "#7ff2ff",
+            glow: "rgba(141, 136, 255, 0.42)",
+          },
+        },
+        {
+          name: "软方糖",
+          note: "轮廓更稳，既可爱又不太幼，品牌感比较平衡。",
+          rows: [
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([4, 13]),
+            row([3, 14]),
+            row([3, 14]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([4, 13]),
+            row([4, 5], [7, 8], [10, 11], [13, 14]),
+            row([3, 4], [6, 7], [9, 10], [12, 13], [15, 15]),
+            row([4, 4], [7, 7], [10, 10], [13, 13]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 11],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[6, 2], [7, 2], [6, 3], [7, 3]],
+          ornaments: [],
+          palette: {
+            body: "#69d1c5",
+            shadow: "#3ea89c",
+            highlight: "#b0ece4",
+            ink: "#163733",
+            blush: "#d3f6ef",
+            accent: "#ffe171",
+            glow: "rgba(105, 209, 197, 0.42)",
+          },
+        },
+        {
+          name: "披风仔",
+          note: "肩宽下摆开，像有一点英雄感的小章鱼角色。",
+          rows: [
+            row([7, 10]),
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([1, 16]),
+            row([1, 16]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([4, 13]),
+            row([4, 13]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 4], [6, 8], [10, 12], [14, 15]),
+            row([3, 4], [7, 8], [10, 11], [13, 14]),
+            row([4, 4], [8, 8], [11, 11], [14, 14]),
+          ],
+          eyes: { left: [5, 6], right: [11, 6] },
+          mouth: [8, 10],
+          cheeks: [[4, 9], [13, 9]],
+          highlights: [[5, 2], [6, 2], [5, 3], [6, 3]],
+          ornaments: [[2, 8], [15, 8]],
+          palette: {
+            body: "#67c2ff",
+            shadow: "#3d93d6",
+            highlight: "#b9e4ff",
+            ink: "#112739",
+            blush: "#d8efff",
+            accent: "#ff97c8",
+            glow: "rgba(103, 194, 255, 0.42)",
+          },
+        },
+        {
+          name: "胖墩墩",
+          note: "更圆更敦实，治愈感最强，像桌面陪伴型 mascot。",
+          rows: [
+            row([7, 10]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([1, 16]),
+            row([1, 16]),
+            row([0, 17]),
+            row([0, 17]),
+            row([0, 17]),
+            row([1, 16]),
+            row([1, 16]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([3, 4], [6, 7], [9, 10], [12, 13], [15, 16]),
+            row([2, 3], [5, 6], [8, 9], [11, 12], [14, 15]),
+            row([3, 3], [6, 6], [9, 9], [12, 12], [15, 15]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 11],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[5, 2], [6, 2], [7, 2], [5, 3]],
+          ornaments: [],
+          palette: {
+            body: "#ffd56f",
+            shadow: "#d7ab44",
+            highlight: "#ffe7ab",
+            ink: "#3a2b12",
+            blush: "#ffe7b0",
+            accent: "#ff938f",
+            glow: "rgba(255, 213, 111, 0.42)",
+          },
+        },
+        {
+          name: "小王冠",
+          note: "头顶记忆点最强，适合做更有品牌招牌感的方向。",
+          rows: [
+            row(),
+            row([7, 10]),
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([3, 14]),
+            row([3, 14]),
+            row([4, 13]),
+            row([5, 12]),
+            row([4, 5], [7, 8], [10, 11], [13, 14]),
+            row([3, 4], [6, 7], [9, 10], [12, 13]),
+            row([4, 4], [7, 7], [10, 10], [13, 13]),
+          ],
+          eyes: { left: [5, 7], right: [11, 7] },
+          mouth: [8, 11],
+          cheeks: [[4, 10], [13, 10]],
+          highlights: [[6, 3], [7, 3], [6, 4], [7, 4]],
+          ornaments: [[8, 0], [6, 1], [8, 1], [10, 1], [5, 2], [11, 2]],
+          palette: {
+            body: "#b79fff",
+            shadow: "#8b73d9",
+            highlight: "#e0d6ff",
+            ink: "#231a43",
+            blush: "#eee4ff",
+            accent: "#ffd86d",
+            glow: "rgba(183, 159, 255, 0.42)",
+          },
+        },
+        {
+          name: "宝宝仔",
+          note: "体型更小更轻松，最有“桌面宠物”感。",
+          rows: [
+            row(),
+            row(),
+            row([7, 10]),
+            row([6, 11]),
+            row([5, 12]),
+            row([4, 13]),
+            row([3, 14]),
+            row([3, 14]),
+            row([2, 15]),
+            row([2, 15]),
+            row([2, 15]),
+            row([3, 14]),
+            row([4, 13]),
+            row([5, 12]),
+            row([5, 12]),
+            row([5, 6], [8, 9], [11, 12]),
+            row([4, 5], [7, 8], [10, 11], [13, 14]),
+            row([5, 5], [8, 8], [11, 11], [14, 14]),
+          ],
+          eyes: { left: [6, 8], right: [10, 8] },
+          mouth: [8, 11],
+          cheeks: [[5, 10], [12, 10]],
+          highlights: [[7, 4], [8, 4], [7, 5], [8, 5]],
+          ornaments: [],
+          palette: {
+            body: "#ff96ca",
+            shadow: "#d26592",
+            highlight: "#ffc8e2",
+            ink: "#32162b",
+            blush: "#ffddeb",
+            accent: "#79fff0",
+            glow: "rgba(255, 150, 202, 0.42)",
+          },
+        },
+      ];
+
+      const MOODS = [
+        {
+          name: "招牌笑",
+          note: "稳、亲和、容易做主形象，适合第一眼品牌记忆。",
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+          },
+        },
+        {
+          name: "眨眼",
+          note: "更会互动，有“我在戳你”的桌面伴侣气质。",
+          render(matrix, shape, palette) {
+            drawWinkEye(matrix, shape.eyes.left, palette);
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+            drawSpark(matrix, shape.eyes.right[0] + 4, shape.eyes.right[1] - 2, palette.accent, palette.highlight);
+          },
+        },
+        {
+          name: "坏笑",
+          note: "聪明又不高冷，适合 AI 助手那种机灵感。",
+          render(matrix, shape, palette) {
+            drawHalfLidEye(matrix, shape.eyes.left, palette);
+            drawHalfLidEye(matrix, shape.eyes.right, palette);
+            drawSmirk(matrix, shape.mouth, palette.ink);
+            setPixel(matrix, shape.eyes.left[0] - 1, shape.eyes.left[1] - 1, palette.ink);
+            setPixel(matrix, shape.eyes.right[0] + 2, shape.eyes.right[1] - 1, palette.ink);
+          },
+        },
+        {
+          name: "惊喜",
+          note: "提醒感更强，适合通知、完成、召回这类场景。",
+          render(matrix, shape, palette) {
+            drawWideEye(matrix, shape.eyes.left, palette);
+            drawWideEye(matrix, shape.eyes.right, palette);
+            drawRoundMouth(matrix, shape.mouth, palette.ink, palette.body);
+          },
+        },
+        {
+          name: "撒娇",
+          note: "最软萌，也最像会陪着用户工作的桌面小章鱼。",
+          render(matrix, shape, palette) {
+            drawHappyEye(matrix, shape.eyes.left, palette);
+            drawHappyEye(matrix, shape.eyes.right, palette);
+            drawWMouth(matrix, shape.mouth, palette.ink);
+            boostCheeks(matrix, shape.cheeks, palette.blush);
+          },
+        },
+        {
+          name: "吐舌",
+          note: "更俏皮，更有一点顽皮劲，适合偏年轻化路线。",
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawTongueMouth(matrix, shape.mouth, palette.ink, "#ff5f8f");
+            setPixel(matrix, shape.eyes.left[0] - 1, shape.eyes.left[1] - 1, palette.ink);
+          },
+        },
+        {
+          name: "派对",
+          note: "成功提醒时很有庆祝感，也更容易形成品牌仪式感。",
+          render(matrix, shape, palette) {
+            drawStarEye(matrix, shape.eyes.left, palette);
+            drawStarEye(matrix, shape.eyes.right, palette);
+            drawGrin(matrix, shape.mouth, palette.ink);
+            drawConfetti(matrix, palette);
+          },
+        },
+        {
+          name: "心动",
+          note: "记忆点最强，更像一个真正会被喜欢的 mascot 角色。",
+          render(matrix, shape, palette) {
+            drawHeartEye(matrix, shape.eyes.left[0] - 1, shape.eyes.left[1] - 1);
+            drawHeartEye(matrix, shape.eyes.right[0] - 1, shape.eyes.right[1] - 1);
+            drawKissMouth(matrix, shape.mouth, palette.ink);
+            drawHeartBubble(matrix, shape.eyes.left[0] - 3, shape.eyes.left[1] - 5);
+          },
+        },
+      ];
+
+      const C1_BASE_SHAPE_INDEX = 2;
+
+      const C1_DERIVATIVES = [
+        {
+          id: "C1-a",
+          name: "原型收口",
+          shapeNote: "保留 C1 的上尖下圆，只把底部触手收得更齐，适合作为基准款。",
+          moodNote: "最稳、最像默认主形象，品牌首页和常驻 icon 都能挂住。",
+          shape: createC1Variant({}),
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+          },
+        },
+        {
+          id: "C1-b",
+          name: "圆头版",
+          shapeNote: "把头顶撑圆一圈，减掉一点尖锐感，整体更像糯一点的品牌宠物。",
+          moodNote: "亲和力更强，离“桌面陪伴感”更近。",
+          shape: createC1Variant({
+            rowChanges: {
+              0: [[7, 10]],
+              1: [[6, 11]],
+              2: [[5, 12]],
+              3: [[4, 13]],
+            },
+          }),
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+          },
+        },
+        {
+          id: "C1-c",
+          name: "侧鳍版",
+          shapeNote: "两侧肩线稍微外撑，形成小鳍感，轮廓记忆点更强。",
+          moodNote: "更像一个有角色设定的 mascot，远看识别会更快。",
+          shape: createC1Variant({
+            rowChanges: {
+              7: [[1, 16]],
+              8: [[1, 16]],
+              9: [[1, 16]],
+              10: [[2, 15]],
+            },
+            ornaments: [[1, 8], [16, 8]],
+          }),
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawGrin(matrix, shape.mouth, palette.ink);
+          },
+        },
+        {
+          id: "C1-d",
+          name: "卷脚版",
+          shapeNote: "把底部触手向内卷，整体站姿更软、更像会贴着屏幕边缘晃的小家伙。",
+          moodNote: "治愈感最强，适合偏陪伴型产品路线。",
+          shape: createC1Variant({
+            rowChanges: {
+              15: [[5, 6], [8, 9], [11, 12]],
+              16: [[4, 5], [7, 8], [10, 11], [13, 14]],
+              17: [[5, 5], [8, 8], [11, 11], [14, 14]],
+            },
+          }),
+          render(matrix, shape, palette) {
+            drawHappyEye(matrix, shape.eyes.left, palette);
+            drawHappyEye(matrix, shape.eyes.right, palette);
+            drawWMouth(matrix, shape.mouth, palette.ink);
+            boostCheeks(matrix, shape.cheeks, palette.blush);
+          },
+        },
+        {
+          id: "C1-e",
+          name: "外八版",
+          shapeNote: "把底部触手向外展开，底盘更稳，主视觉站姿会更有支撑力。",
+          moodNote: "更适合做品牌海报和开屏主角。",
+          shape: createC1Variant({
+            rowChanges: {
+              15: [[2, 3], [5, 6], [8, 9], [11, 12], [14, 15]],
+              16: [[1, 2], [5, 6], [8, 9], [11, 12], [15, 16]],
+              17: [[1, 1], [6, 6], [9, 9], [12, 12], [16, 16]],
+            },
+          }),
+          render(matrix, shape, palette) {
+            drawOpenEye(matrix, shape.eyes.left, palette, "right");
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawGrin(matrix, shape.mouth, palette.ink);
+          },
+        },
+        {
+          id: "C1-f",
+          name: "顶芽版",
+          shapeNote: "头顶加一个很小的芽点，专门补“一眼记住”的招牌特征。",
+          moodNote: "互动感更强，适合做提醒、召回时的小角色。",
+          shape: createC1Variant({
+            ornaments: [[8, 0], [7, 1], [8, 1], [9, 1]],
+          }),
+          render(matrix, shape, palette) {
+            drawWinkEye(matrix, shape.eyes.left, palette);
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+            drawSpark(matrix, shape.eyes.right[0] + 4, shape.eyes.right[1] - 2, palette.accent, palette.body);
+          },
+        },
+        {
+          id: "C1-g",
+          name: "贴脸版",
+          shapeNote: "五官往中间收，脸更集中，整体会更像一个小宝宝。",
+          moodNote: "更幼、更讨喜，偏可爱路线会更占优势。",
+          shape: createC1Variant({
+            eyes: { left: [6, 7], right: [10, 7] },
+            mouth: [8, 10],
+            cheeks: [[5, 10], [11, 10]],
+          }),
+          render(matrix, shape, palette) {
+            drawHappyEye(matrix, shape.eyes.left, palette);
+            drawHappyEye(matrix, shape.eyes.right, palette);
+            drawSmile(matrix, shape.mouth, palette.ink);
+            boostCheeks(matrix, shape.cheeks, palette.blush);
+          },
+        },
+        {
+          id: "C1-h",
+          name: "招手版",
+          shapeNote: "左侧触手抬起来一点，像在主动打招呼，动作感最明显。",
+          moodNote: "很适合通知、确认、完成提醒这类会主动叫人的场景。",
+          shape: createC1Variant({
+            rowChanges: {
+              13: [[1, 2], [4, 13]],
+              14: [[0, 2], [4, 13]],
+              15: [[0, 2], [5, 6], [8, 9], [11, 12]],
+              16: [[1, 2], [6, 7], [9, 10], [13, 14]],
+              17: [[2, 2], [7, 7], [10, 10], [14, 14]],
+            },
+          }),
+          render(matrix, shape, palette) {
+            drawWinkEye(matrix, shape.eyes.left, palette);
+            drawOpenEye(matrix, shape.eyes.right, palette, "left");
+            drawSmile(matrix, shape.mouth, palette.ink);
+          },
+        },
+      ];
+
+      function createC1Variant(options) {
+        const base = cloneShape(SHAPES[C1_BASE_SHAPE_INDEX]);
+
+        base.highlights = [];
+        base.ornaments = [];
+
+        if (options?.rowChanges) {
+          Object.entries(options.rowChanges).forEach(([rowIndex, segments]) => {
+            base.rows[Number(rowIndex)] = segments.map(([start, end]) => [start, end]);
+          });
+        }
+
+        if (options?.eyes) {
+          base.eyes = {
+            left: [...options.eyes.left],
+            right: [...options.eyes.right],
+          };
+        }
+
+        if (options?.mouth) {
+          base.mouth = [...options.mouth];
+        }
+
+        if (options?.cheeks) {
+          base.cheeks = options.cheeks.map(([x, y]) => [x, y]);
+        }
+
+        if (options?.ornaments) {
+          base.ornaments = options.ornaments.map(([x, y]) => [x, y]);
+        }
+
+        if (options?.palette) {
+          base.palette = {
+            ...base.palette,
+            ...options.palette,
+          };
+        }
+
+        return base;
+      }
+
+      function cloneShape(shape) {
+        return {
+          ...shape,
+          rows: shape.rows.map((segments) => segments.map(([start, end]) => [start, end])),
+          eyes: {
+            left: [...shape.eyes.left],
+            right: [...shape.eyes.right],
+          },
+          mouth: [...shape.mouth],
+          cheeks: shape.cheeks.map(([x, y]) => [x, y]),
+          highlights: shape.highlights.map(([x, y]) => [x, y]),
+          ornaments: shape.ornaments.map(([x, y]) => [x, y]),
+          palette: {
+            ...shape.palette,
+          },
+        };
+      }
+
+      const CURRENT_SOURCE_ICON_COLOR = "#88AAFF";
+      const CURRENT_SOURCE_ICON_BODY = [
+        [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+        [1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0],
+        [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+      ];
+
+      const CURRENT_SOURCE_ICON_STATES = [
+        {
+          key: "pending",
+          label: "待确认",
+          note: "白眼配平嘴，是当前最接近默认展示的状态。",
+          accent: "#facc15",
+        },
+        {
+          key: "running",
+          label: "进行中",
+          note: "眯眼更专注，像正在认真处理任务。",
+          accent: "#4ade80",
+        },
+        {
+          key: "success",
+          label: "已完成",
+          note: "闭眼大笑，完成提醒时最有情绪张力。",
+          accent: "#cbd5e1",
+        },
+        {
+          key: "failed",
+          label: "失败",
+          note: "X 眼和下撇嘴，传达问题状态非常直接。",
+          accent: "#f87171",
+        },
+      ];
+
+      const columnLabels = document.getElementById("columnLabels");
+      const board = document.getElementById("board");
+      const previewCanvas = document.getElementById("previewCanvas");
+      const previewBadge = document.getElementById("previewBadge");
+      const previewTitle = document.getElementById("previewTitle");
+      const previewSubtitle = document.getElementById("previewSubtitle");
+      const previewSummary = document.getElementById("previewSummary");
+      const previewShape = document.getElementById("previewShape");
+      const previewMood = document.getElementById("previewMood");
+      const previewSwatches = document.getElementById("previewSwatches");
+      const currentMascotBadge = document.getElementById("currentMascotBadge");
+      const currentMascotCanvas = document.getElementById("currentMascotCanvas");
+      const currentMascotTitle = document.getElementById("currentMascotTitle");
+      const currentMascotSummary = document.getElementById("currentMascotSummary");
+      const currentMascotStates = document.getElementById("currentMascotStates");
+      const derivativeGrid = document.getElementById("derivativeGrid");
+      const derivativeBadge = document.getElementById("derivativeBadge");
+      const derivativeCanvas = document.getElementById("derivativeCanvas");
+      const derivativeTitle = document.getElementById("derivativeTitle");
+      const derivativeSubtitle = document.getElementById("derivativeSubtitle");
+      const derivativeSummary = document.getElementById("derivativeSummary");
+      const derivativeShapeNote = document.getElementById("derivativeShapeNote");
+      const derivativeMoodNote = document.getElementById("derivativeMoodNote");
+      const cards = [];
+      const currentMascotCards = [];
+      const derivativeCards = [];
+
+      let selectedKey = "A1";
+      let hoveredKey = null;
+      let selectedCurrentMascotKey = "pending";
+      let hoveredCurrentMascotKey = null;
+      let selectedDerivativeId = "C1-a";
+      let hoveredDerivativeId = null;
+
+      renderCurrentMascotSection();
+      renderDerivativeSection();
+      renderColumnLabels();
+      renderBoard();
+      updatePreview(0, 0);
+      syncActiveCard();
+
+      function renderCurrentMascotSection() {
+        CURRENT_SOURCE_ICON_STATES.forEach((state) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "current-status-card";
+          card.dataset.key = state.key;
+          card.style.setProperty("--state-color", state.accent);
+
+          const canvas = document.createElement("canvas");
+          canvas.width = 16;
+          canvas.height = 12;
+          drawCurrentMascot(canvas, state.key);
+
+          const kicker = document.createElement("div");
+          kicker.className = "current-status-kicker";
+          kicker.textContent = "SOURCE ICON";
+
+          const name = document.createElement("div");
+          name.className = "current-status-name";
+          name.textContent = state.label;
+
+          const note = document.createElement("div");
+          note.className = "current-status-note";
+          note.textContent = state.note;
+
+          card.append(canvas, kicker, name, note);
+
+          card.addEventListener("mouseenter", () => {
+            hoveredCurrentMascotKey = state.key;
+            updateCurrentMascot(state.key);
+            syncCurrentMascotCards();
+          });
+
+          card.addEventListener("mouseleave", () => {
+            hoveredCurrentMascotKey = null;
+            restoreCurrentMascotPreview();
+            syncCurrentMascotCards();
+          });
+
+          card.addEventListener("focus", () => {
+            hoveredCurrentMascotKey = state.key;
+            updateCurrentMascot(state.key);
+            syncCurrentMascotCards();
+          });
+
+          card.addEventListener("blur", () => {
+            hoveredCurrentMascotKey = null;
+            restoreCurrentMascotPreview();
+            syncCurrentMascotCards();
+          });
+
+          card.addEventListener("click", () => {
+            selectedCurrentMascotKey = state.key;
+            hoveredCurrentMascotKey = null;
+            updateCurrentMascot(state.key);
+            syncCurrentMascotCards();
+          });
+
+          currentMascotCards.push(card);
+          currentMascotStates.appendChild(card);
+        });
+
+        updateCurrentMascot(selectedCurrentMascotKey);
+        syncCurrentMascotCards();
+      }
+
+      function restoreCurrentMascotPreview() {
+        updateCurrentMascot(selectedCurrentMascotKey);
+      }
+
+      function syncCurrentMascotCards() {
+        const activeKey = hoveredCurrentMascotKey || selectedCurrentMascotKey;
+        currentMascotCards.forEach((card) => {
+          card.classList.toggle("is-active", card.dataset.key === activeKey);
+        });
+      }
+
+      function updateCurrentMascot(statusKey) {
+        const state = CURRENT_SOURCE_ICON_STATES.find((item) => item.key === statusKey) ?? CURRENT_SOURCE_ICON_STATES[0];
+        currentMascotBadge.textContent = hoveredCurrentMascotKey ? "临时预览" : "当前在用";
+        currentMascotBadge.style.setProperty("--preview-accent", state.accent);
+        currentMascotTitle.textContent = `当前在用 · ${state.label}`;
+        currentMascotSummary.textContent = `${state.note} 这是现在面板和弹窗里实际显示的 16x12 像素章鱼。`;
+        drawCurrentMascot(currentMascotCanvas, state.key);
+      }
+
+      function renderDerivativeSection() {
+        C1_DERIVATIVES.forEach((variant, variantIndex) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "derivative-card";
+          card.dataset.key = variant.id;
+          card.style.setProperty("--variant-glow", variant.shape.palette.glow);
+
+          const canvas = document.createElement("canvas");
+          canvas.width = SPRITE_SIZE;
+          canvas.height = SPRITE_SIZE;
+          drawDerivativeSprite(canvas, variantIndex);
+
+          const id = document.createElement("div");
+          id.className = "derivative-card-id";
+          id.textContent = variant.id;
+
+          const name = document.createElement("div");
+          name.className = "derivative-card-name";
+          name.textContent = variant.name;
+
+          const note = document.createElement("div");
+          note.className = "derivative-card-note";
+          note.textContent = variant.shapeNote;
+
+          card.append(canvas, id, name, note);
+
+          card.addEventListener("mouseenter", () => {
+            hoveredDerivativeId = variant.id;
+            updateDerivativePreview(variantIndex);
+            syncDerivativeCards();
+          });
+
+          card.addEventListener("mouseleave", () => {
+            hoveredDerivativeId = null;
+            restoreDerivativePreview();
+            syncDerivativeCards();
+          });
+
+          card.addEventListener("focus", () => {
+            hoveredDerivativeId = variant.id;
+            updateDerivativePreview(variantIndex);
+            syncDerivativeCards();
+          });
+
+          card.addEventListener("blur", () => {
+            hoveredDerivativeId = null;
+            restoreDerivativePreview();
+            syncDerivativeCards();
+          });
+
+          card.addEventListener("click", () => {
+            selectedDerivativeId = variant.id;
+            hoveredDerivativeId = null;
+            updateDerivativePreview(variantIndex);
+            syncDerivativeCards();
+          });
+
+          derivativeCards.push(card);
+          derivativeGrid.appendChild(card);
+        });
+
+        updateDerivativePreview(0);
+        syncDerivativeCards();
+      }
+
+      function restoreDerivativePreview() {
+        const variantIndex = C1_DERIVATIVES.findIndex((item) => item.id === selectedDerivativeId);
+        updateDerivativePreview(variantIndex >= 0 ? variantIndex : 0);
+      }
+
+      function syncDerivativeCards() {
+        const activeKey = hoveredDerivativeId || selectedDerivativeId;
+        derivativeCards.forEach((card) => {
+          card.classList.toggle("is-active", card.dataset.key === activeKey);
+        });
+      }
+
+      function updateDerivativePreview(variantIndex) {
+        const variant = C1_DERIVATIVES[variantIndex] ?? C1_DERIVATIVES[0];
+        derivativeBadge.textContent = hoveredDerivativeId ? "临时预览" : "C1 衍生";
+        derivativeBadge.style.setProperty("--derivative-accent", variant.shape.palette.accent);
+        derivativeTitle.textContent = variant.id;
+        derivativeSubtitle.textContent = variant.name;
+        derivativeSummary.textContent = `${variant.shapeNote} ${variant.moodNote}`;
+        derivativeShapeNote.textContent = variant.shapeNote;
+        derivativeMoodNote.textContent = variant.moodNote;
+        drawDerivativeSprite(derivativeCanvas, variantIndex);
+      }
+
+      function renderColumnLabels() {
+        const corner = document.createElement("div");
+        corner.className = "axis-corner";
+        corner.innerHTML = "行 = 轮廓方向<br />列 = 性格方向";
+        columnLabels.appendChild(corner);
+
+        MOODS.forEach((mood, index) => {
+          const label = document.createElement("div");
+          label.className = "axis-label";
+          label.innerHTML = `<strong>${index + 1}. ${mood.name}</strong>`;
+          columnLabels.appendChild(label);
+        });
+      }
+
+      function renderBoard() {
+        SHAPES.forEach((shape, shapeIndex) => {
+          const rowLabel = document.createElement("div");
+          rowLabel.className = "row-label";
+          rowLabel.innerHTML = `<strong>${String.fromCharCode(65 + shapeIndex)}. ${shape.name}</strong><span>${shape.note}</span>`;
+          board.appendChild(rowLabel);
+
+          MOODS.forEach((mood, moodIndex) => {
+            const key = `${String.fromCharCode(65 + shapeIndex)}${moodIndex + 1}`;
+            const card = document.createElement("button");
+            card.type = "button";
+            card.className = "card";
+            card.style.setProperty("--glow", shape.palette.glow);
+            card.setAttribute("aria-label", `${key} ${shape.name} ${mood.name}`);
+            card.dataset.key = key;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = SPRITE_SIZE;
+            canvas.height = SPRITE_SIZE;
+            drawSprite(canvas, shapeIndex, moodIndex);
+
+            const id = document.createElement("div");
+            id.className = "card-id";
+            id.textContent = key;
+
+            const name = document.createElement("div");
+            name.className = "card-name";
+            name.textContent = `${shape.name} x ${mood.name}`;
+
+            card.append(id, canvas, name);
+
+            card.addEventListener("mouseenter", () => {
+              hoveredKey = key;
+              updatePreview(shapeIndex, moodIndex);
+              syncActiveCard();
+            });
+
+            card.addEventListener("mouseleave", () => {
+              hoveredKey = null;
+              restoreSelectedPreview();
+              syncActiveCard();
+            });
+
+            card.addEventListener("focus", () => {
+              hoveredKey = key;
+              updatePreview(shapeIndex, moodIndex);
+              syncActiveCard();
+            });
+
+            card.addEventListener("blur", () => {
+              hoveredKey = null;
+              restoreSelectedPreview();
+              syncActiveCard();
+            });
+
+            card.addEventListener("click", () => {
+              selectedKey = key;
+              hoveredKey = null;
+              updatePreview(shapeIndex, moodIndex);
+              syncActiveCard();
+            });
+
+            cards.push(card);
+            board.appendChild(card);
+          });
+        });
+      }
+
+      function restoreSelectedPreview() {
+        const shapeIndex = selectedKey.charCodeAt(0) - 65;
+        const moodIndex = Number(selectedKey.slice(1)) - 1;
+        updatePreview(shapeIndex, moodIndex);
+      }
+
+      function syncActiveCard() {
+        const activeKey = hoveredKey || selectedKey;
+        cards.forEach((card) => {
+          card.classList.toggle("is-active", card.dataset.key === activeKey);
+        });
+      }
+
+      function updatePreview(shapeIndex, moodIndex) {
+        const shape = SHAPES[shapeIndex];
+        const mood = MOODS[moodIndex];
+        const key = `${String.fromCharCode(65 + shapeIndex)}${moodIndex + 1}`;
+
+        previewBadge.textContent = hoveredKey ? "临时预览" : "当前已选";
+        previewBadge.style.setProperty("--preview-accent", shape.palette.accent);
+        previewTitle.textContent = key;
+        previewSubtitle.textContent = `${shape.name} x ${mood.name}`;
+        previewSummary.textContent = `${shape.note} ${mood.note}`;
+        previewShape.textContent = shape.note;
+        previewMood.textContent = mood.note;
+
+        previewSwatches.innerHTML = "";
+        [shape.palette.body, shape.palette.highlight, shape.palette.accent].forEach((color) => {
+          const swatch = document.createElement("div");
+          swatch.className = "swatch";
+          swatch.style.background = color;
+          previewSwatches.appendChild(swatch);
+        });
+
+        drawSprite(previewCanvas, shapeIndex, moodIndex);
+      }
+
+      function drawSprite(canvas, shapeIndex, moodIndex) {
+        const sprite = makeSprite(shapeIndex, moodIndex);
+        const size = sprite.length;
+
+        if (canvas.width !== size) {
+          canvas.width = size;
+        }
+
+        if (canvas.height !== size) {
+          canvas.height = size;
+        }
+
+        const ctx = canvas.getContext("2d");
+
+        ctx.clearRect(0, 0, size, size);
+
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            const color = sprite[y][x];
+            if (!color) continue;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      function drawDerivativeSprite(canvas, variantIndex) {
+        const sprite = makeDerivativeSprite(variantIndex);
+        const size = sprite.length;
+
+        if (canvas.width !== size) {
+          canvas.width = size;
+        }
+
+        if (canvas.height !== size) {
+          canvas.height = size;
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, size, size);
+
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            const color = sprite[y][x];
+            if (!color) continue;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+
+      function makeSprite(shapeIndex, moodIndex) {
+        const shape = SHAPES[shapeIndex];
+        const mood = MOODS[moodIndex];
+        const matrix = Array.from({ length: SPRITE_SIZE }, () => Array(SPRITE_SIZE).fill(null));
+        const { bodyCells, accentCells } = buildShapeMask(shape);
+
+        bodyCells.forEach((key) => {
+          const [x, y] = parseKey(key);
+          const hasTop = bodyCells.has(makeKey(x, y - 1));
+          const hasLeft = bodyCells.has(makeKey(x - 1, y));
+          const hasBottom = bodyCells.has(makeKey(x, y + 1));
+          const hasRight = bodyCells.has(makeKey(x + 1, y));
+          const lightEdge = !hasTop || !hasLeft;
+          const darkEdge = !hasBottom || !hasRight;
+
+          if (darkEdge && !lightEdge) {
+            matrix[y][x] = shape.palette.shadow;
+          } else if (lightEdge) {
+            matrix[y][x] = shape.palette.highlight;
+          } else {
+            matrix[y][x] = shape.palette.body;
+          }
+        });
+
+        shape.highlights.forEach(([x, y]) => {
+          if (bodyCells.has(makeKey(x, y))) {
+            matrix[y][x] = shape.palette.highlight;
+          }
+        });
+
+        shape.cheeks.forEach(([x, y]) => {
+          if (bodyCells.has(makeKey(x, y))) {
+            matrix[y][x] = shape.palette.blush;
+          }
+        });
+
+        accentCells.forEach((key) => {
+          const [x, y] = parseKey(key);
+          matrix[y][x] = shape.palette.accent;
+        });
+
+        mood.render(matrix, shape, shape.palette);
+        return matrix;
+      }
+
+      function makeDerivativeSprite(variantIndex) {
+        const variant = C1_DERIVATIVES[variantIndex] ?? C1_DERIVATIVES[0];
+        const shape = variant.shape;
+        const matrix = Array.from({ length: SPRITE_SIZE }, () => Array(SPRITE_SIZE).fill(null));
+        const { bodyCells, accentCells } = buildShapeMask(shape);
+
+        bodyCells.forEach((key) => {
+          const [x, y] = parseKey(key);
+          const hasBottom = bodyCells.has(makeKey(x, y + 1));
+          const hasRight = bodyCells.has(makeKey(x + 1, y));
+          const hasLeft = bodyCells.has(makeKey(x - 1, y));
+          const isTentacleBand = y >= 15;
+
+          if (!hasBottom || !hasRight || (isTentacleBand && !hasLeft)) {
+            matrix[y][x] = shape.palette.shadow;
+          } else {
+            matrix[y][x] = shape.palette.body;
+          }
+        });
+
+        shape.cheeks.forEach(([x, y]) => {
+          if (bodyCells.has(makeKey(x, y))) {
+            matrix[y][x] = shape.palette.blush;
+            if (bodyCells.has(makeKey(x + 1, y))) {
+              matrix[y][x + 1] = shape.palette.blush;
+            }
+          }
+        });
+
+        accentCells.forEach((key) => {
+          const [x, y] = parseKey(key);
+          matrix[y][x] = shape.palette.accent;
+        });
+
+        variant.render(matrix, shape, shape.palette);
+        return matrix;
+      }
+
+      function buildShapeMask(shape) {
+        const bodyCells = new Set();
+        const accentCells = new Set();
+
+        shape.rows.forEach((segments, y) => {
+          segments.forEach(([start, end]) => {
+            for (let x = start; x <= end; x += 1) {
+              bodyCells.add(makeKey(x, y));
+            }
+          });
+        });
+
+        shape.ornaments.forEach(([x, y]) => {
+          accentCells.add(makeKey(x, y));
+        });
+
+        return { bodyCells, accentCells };
+      }
+
+      function makeKey(x, y) {
+        return `${x},${y}`;
+      }
+
+      function parseKey(key) {
+        return key.split(",").map(Number);
+      }
+
+      function setPixel(matrix, x, y, color) {
+        if (x < 0 || x >= SPRITE_SIZE || y < 0 || y >= SPRITE_SIZE) return;
+        matrix[y][x] = color;
+      }
+
+      function fillRect(matrix, x, y, width, height, color) {
+        for (let iy = 0; iy < height; iy += 1) {
+          for (let ix = 0; ix < width; ix += 1) {
+            setPixel(matrix, x + ix, y + iy, color);
+          }
+        }
+      }
+
+      function drawOpenEye(matrix, [x, y], palette, pupilSide) {
+        fillRect(matrix, x, y, 2, 2, "#ffffff");
+        setPixel(matrix, pupilSide === "left" ? x : x + 1, y + 1, palette.ink);
+      }
+
+      function drawWinkEye(matrix, [x, y], palette) {
+        setPixel(matrix, x, y + 1, palette.ink);
+        setPixel(matrix, x + 1, y + 1, palette.ink);
+      }
+
+      function drawHappyEye(matrix, [x, y], palette) {
+        setPixel(matrix, x, y, palette.ink);
+        setPixel(matrix, x + 1, y, palette.ink);
+      }
+
+      function drawHalfLidEye(matrix, [x, y], palette) {
+        setPixel(matrix, x, y + 1, palette.ink);
+        setPixel(matrix, x + 1, y + 1, palette.ink);
+      }
+
+      function drawWideEye(matrix, [x, y], palette) {
+        fillRect(matrix, x, y, 2, 2, "#ffffff");
+        setPixel(matrix, x, y + 1, palette.ink);
+        setPixel(matrix, x + 1, y + 1, palette.ink);
+      }
+
+      function drawStarEye(matrix, [x, y], palette) {
+        setPixel(matrix, x, y, palette.highlight);
+        setPixel(matrix, x + 1, y, "#ffd76d");
+        setPixel(matrix, x, y + 1, "#ffd76d");
+        setPixel(matrix, x + 1, y + 1, palette.highlight);
+      }
+
+      function drawHeartEye(matrix, x, y) {
+        const color = "#ff4d8e";
+        [
+          [x + 1, y],
+          [x + 2, y],
+          [x, y + 1],
+          [x + 1, y + 1],
+          [x + 2, y + 1],
+          [x + 3, y + 1],
+          [x + 1, y + 2],
+          [x + 2, y + 2],
+          [x + 1, y + 3],
+        ].forEach(([px, py]) => setPixel(matrix, px, py, color));
+      }
+
+      function drawSmile(matrix, [cx, cy], color) {
+        [
+          [cx - 2, cy],
+          [cx - 1, cy + 1],
+          [cx, cy + 1],
+          [cx + 1, cy + 1],
+          [cx + 2, cy],
+        ].forEach(([x, y]) => setPixel(matrix, x, y, color));
+      }
+
+      function drawSmirk(matrix, [cx, cy], color) {
+        [
+          [cx - 2, cy + 1],
+          [cx - 1, cy],
+          [cx, cy],
+          [cx + 1, cy],
+          [cx + 2, cy - 1],
+        ].forEach(([x, y]) => setPixel(matrix, x, y, color));
+      }
+
+      function drawRoundMouth(matrix, [cx, cy], color, bodyColor) {
+        [
+          [cx - 1, cy],
+          [cx, cy],
+          [cx + 1, cy],
+          [cx - 1, cy + 1],
+          [cx + 1, cy + 1],
+          [cx - 1, cy + 2],
+          [cx, cy + 2],
+          [cx + 1, cy + 2],
+        ].forEach(([x, y]) => setPixel(matrix, x, y, color));
+        setPixel(matrix, cx, cy + 1, bodyColor);
+      }
+
+      function drawWMouth(matrix, [cx, cy], color) {
+        [
+          [cx - 2, cy],
+          [cx - 1, cy + 1],
+          [cx, cy],
+          [cx + 1, cy + 1],
+          [cx + 2, cy],
+        ].forEach(([x, y]) => setPixel(matrix, x, y, color));
+      }
+
+      function drawTongueMouth(matrix, [cx, cy], color, tongueColor) {
+        drawSmile(matrix, [cx, cy], color);
+        setPixel(matrix, cx, cy + 2, tongueColor);
+        setPixel(matrix, cx, cy + 1, color);
+      }
+
+      function drawGrin(matrix, [cx, cy], color) {
+        for (let x = cx - 2; x <= cx + 2; x += 1) {
+          setPixel(matrix, x, cy, color);
+        }
+        for (let x = cx - 1; x <= cx + 1; x += 1) {
+          setPixel(matrix, x, cy + 1, color);
+        }
+      }
+
+      function drawKissMouth(matrix, [cx, cy], color) {
+        [
+          [cx, cy],
+          [cx - 1, cy + 1],
+          [cx + 1, cy + 1],
+          [cx, cy + 2],
+        ].forEach(([x, y]) => setPixel(matrix, x, y, color));
+      }
+
+      function boostCheeks(matrix, cheeks, color) {
+        cheeks.forEach(([x, y]) => {
+          setPixel(matrix, x, y, color);
+          setPixel(matrix, x + 1, y, color);
+        });
+      }
+
+      function drawSpark(matrix, x, y, accent, highlight) {
+        setPixel(matrix, x, y, accent);
+        setPixel(matrix, x - 1, y, highlight);
+        setPixel(matrix, x + 1, y, highlight);
+        setPixel(matrix, x, y - 1, highlight);
+        setPixel(matrix, x, y + 1, highlight);
+      }
+
+      function drawConfetti(matrix, palette) {
+        [
+          [2, 2, palette.accent],
+          [4, 1, palette.highlight],
+          [14, 2, palette.accent],
+          [15, 4, palette.highlight],
+          [3, 5, palette.highlight],
+        ].forEach(([x, y, color]) => setPixel(matrix, x, y, color));
+      }
+
+      function drawHeartBubble(matrix, x, y) {
+        const color = "#ff4d8e";
+        [
+          [x + 1, y],
+          [x + 2, y],
+          [x, y + 1],
+          [x + 3, y + 1],
+          [x + 1, y + 2],
+          [x + 2, y + 2],
+          [x + 1, y + 3],
+          [x + 2, y + 4],
+        ].forEach(([px, py]) => setPixel(matrix, px, py, color));
+      }
+
+      function drawCurrentMascot(canvas, statusKey) {
+        const ctx = canvas.getContext("2d");
+        const color = CURRENT_SOURCE_ICON_COLOR;
+        const blush = `${color}66`;
+        const expression = getCurrentMascotExpression(statusKey, color);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        CURRENT_SOURCE_ICON_BODY.forEach((row, y) => {
+          row.forEach((cell, x) => {
+            if (!cell) return;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 1, 1);
+          });
+        });
+
+        expression.forEach(([x, y, fill]) => {
+          ctx.fillStyle = fill;
+          ctx.fillRect(x, y, 1, 1);
+        });
+
+        ctx.fillStyle = blush;
+        ctx.fillRect(2, 6, 1, 1);
+        ctx.fillRect(13, 6, 1, 1);
+
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        ctx.fillRect(4, 2, 1, 1);
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(5, 2, 1, 1);
+      }
+
+      function getCurrentMascotExpression(statusKey, bodyColor) {
+        const W = "#FFFFFF";
+        const D = "#1a1a2e";
+        const C = bodyColor;
+
+        switch (statusKey) {
+          case "pending":
+            return [
+              [3, 4, W], [4, 4, W], [3, 5, W], [4, 5, D],
+              [11, 4, W], [12, 4, W], [11, 5, D], [12, 5, W],
+              [6, 7, C], [7, 7, D], [8, 7, D], [9, 7, C],
+              [6, 8, C], [7, 8, C], [8, 8, C], [9, 8, C],
+            ];
+          case "running":
+            return [
+              [3, 4, C], [4, 4, C], [3, 5, D], [4, 5, D],
+              [11, 4, C], [12, 4, C], [11, 5, D], [12, 5, D],
+              [6, 7, C], [7, 7, D], [8, 7, D], [9, 7, C],
+              [6, 8, C], [7, 8, C], [8, 8, C], [9, 8, C],
+            ];
+          case "success":
+            return [
+              [3, 4, D], [4, 4, D], [3, 5, C], [4, 5, C],
+              [11, 4, D], [12, 4, D], [11, 5, C], [12, 5, C],
+              [6, 7, D], [7, 7, C], [8, 7, C], [9, 7, D],
+              [6, 8, C], [7, 8, D], [8, 8, D], [9, 8, C],
+            ];
+          case "failed":
+            return [
+              [3, 4, D], [4, 4, C], [3, 5, C], [4, 5, D],
+              [11, 4, C], [12, 4, D], [11, 5, D], [12, 5, C],
+              [6, 7, C], [7, 7, D], [8, 7, D], [9, 7, C],
+              [6, 8, D], [7, 8, C], [8, 8, C], [9, 8, D],
+            ];
+          default:
+            return [];
+        }
+      }
+    </script>
+  </body>
+</html>
