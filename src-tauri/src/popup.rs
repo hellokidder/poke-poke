@@ -1,9 +1,8 @@
-use crate::notifications::{Task, TaskStore};
-use crate::tray;
+use crate::notifications::Task;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const POPUP_WIDTH: f64 = 360.0;
 const POPUP_HEIGHT: f64 = 150.0;
@@ -16,7 +15,7 @@ pub fn create_popup_list() -> PopupList {
     Arc::new(Mutex::new(Vec::new()))
 }
 
-pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList) {
+pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList, timeout_secs: u32) {
     let label = format!("popup-{}", task.id);
 
     let (x, y) = calculate_position(app, popup_list);
@@ -42,16 +41,45 @@ pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList) {
                 list.push(label);
             }
 
-            // Auto-dismiss: monitor if the user switches to the matching terminal
+            // Auto-dismiss after timeout (0 = never)
+            if timeout_secs > 0 {
+                let app_clone = app.clone();
+                let popup_list_clone = popup_list.clone();
+                let task_id = task.id.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(timeout_secs as u64));
+                    let still_exists = popup_list_clone
+                        .lock()
+                        .map(|list| list.contains(&format!("popup-{}", task_id)))
+                        .unwrap_or(false);
+                    if still_exists {
+                        close_popup(&app_clone, &task_id, &popup_list_clone);
+                    }
+                });
+            }
+
+            // Auto-dismiss when user focuses the associated terminal session
             if let Some(ref tty) = task.terminal_tty {
-                if !tty.is_empty() {
-                    start_focus_monitor(
-                        app.clone(),
-                        task.id.clone(),
-                        tty.clone(),
-                        popup_list.clone(),
-                    );
-                }
+                let app_clone = app.clone();
+                let popup_list_clone = popup_list.clone();
+                let id = task.id.clone();
+                let tty = tty.clone();
+                std::thread::spawn(move || {
+                    loop {
+                        std::thread::sleep(Duration::from_millis(1500));
+                        let still_exists = popup_list_clone
+                            .lock()
+                            .map(|list| list.contains(&format!("popup-{}", id)))
+                            .unwrap_or(false);
+                        if !still_exists {
+                            break;
+                        }
+                        if is_terminal_session_focused(&tty) {
+                            close_popup(&app_clone, &id, &popup_list_clone);
+                            break;
+                        }
+                    }
+                });
             }
         }
         Err(e) => {
@@ -147,40 +175,10 @@ fn animate_reposition(app: &AppHandle, popup_list: &PopupList, removed_idx: usiz
     }
 }
 
-/// Poll every second to check if the user switched to the terminal
-/// matching this popup's tty. If so, auto-dismiss the popup.
-fn start_focus_monitor(app: AppHandle, task_id: String, tty: String, popup_list: PopupList) {
-    std::thread::spawn(move || {
-        let label = format!("popup-{}", task_id);
-
-        loop {
-            std::thread::sleep(Duration::from_secs(1));
-
-            // Stop if popup was already closed (by click or other means)
-            if app.get_webview_window(&label).is_none() {
-                break;
-            }
-
-            if is_terminal_session_focused(&tty) {
-                // The user is looking at the matching terminal — dismiss popup
-                close_popup(&app, &task_id, &popup_list);
-
-                let store = app.state::<Arc<Mutex<TaskStore>>>();
-                let unread = {
-                    let mut s = store.lock().unwrap();
-                    s.mark_read(&task_id);
-                    s.unread_count()
-                };
-                tray::update_tray_icon(&app, unread);
-                let _ = app.emit("notifications-updated", ());
-                break;
-            }
-        }
-    });
-}
-
-/// Check if the frontmost terminal app's current session matches the given tty.
-fn is_terminal_session_focused(tty: &str) -> bool {
+/// Narrow check: is the user actively viewing this exact terminal session?
+/// Only checks the current session of the current tab of the front window.
+/// Used to skip popup creation when the user is already looking at that session.
+pub fn is_terminal_session_focused(tty: &str) -> bool {
     let script = format!(
         r#"tell application "System Events"
     set frontApp to name of first application process whose frontmost is true
@@ -210,3 +208,4 @@ return false"#,
         .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "true")
         .unwrap_or(false)
 }
+

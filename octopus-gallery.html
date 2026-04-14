@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poke Poke Octopus Gallery</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #e0e0ff;
+    font-size: 24px;
+    margin-bottom: 6px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+  }
+  .subtitle {
+    text-align: center;
+    color: #445;
+    font-size: 12px;
+    margin-bottom: 36px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 12px;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .cell {
+    background: #12122a;
+    border-radius: 8px;
+    padding: 8px 6px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    border: 1px solid #222244;
+  }
+  .cell:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    border-color: #3a3a5a;
+  }
+  .cell canvas {
+    image-rendering: pixelated;
+    width: 80px;
+    height: 80px;
+  }
+  .cell .name {
+    color: #667;
+    font-size: 9px;
+    margin-top: 4px;
+    text-align: center;
+  }
+  .cell .idx {
+    color: #334;
+    font-size: 8px;
+  }
+</style>
+</head>
+<body>
+<h1>Poke Poke</h1>
+<p class="subtitle">64 Retro Pixel Octopuses</p>
+<div class="grid" id="grid"></div>
+
+<script>
+// =============================================
+// 全新像素复古章鱼 - 14x14 网格
+// =============================================
+
+// 8 种不同的身体轮廓 (14x14)
+// 0=空, 1=身体, 2=眼白区域, 3=嘴巴区域, 4=腮红区域
+const BODIES = [
+  // #0 经典圆润型
+  [
+    [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,1,1,2,2,1,1,1,1,2,2,1,1,0],
+    [0,1,1,2,2,1,1,1,1,2,2,1,1,0],
+    [0,1,4,1,1,1,1,1,1,1,1,4,1,0],
+    [0,1,1,1,1,3,3,3,3,1,1,1,1,0],
+    [0,1,1,1,1,3,3,3,3,1,1,1,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,0,1,1,0,0,1,1,0,1,0,0],
+    [0,0,1,0,0,1,0,0,0,1,0,1,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #1 方头型
+  [
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,1,1,4,1,1,4,1,1,1,0,0],
+    [0,0,1,1,1,3,3,3,3,1,1,1,0,0],
+    [0,0,1,1,1,3,3,3,3,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,0,1,1,0,1,1,0,1,1,0,0,0],
+    [0,0,0,1,0,0,1,1,0,0,1,0,0,0],
+    [0,0,0,1,0,0,0,0,0,0,1,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #2 胖墩型
+  [
+    [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [1,1,1,2,2,1,1,1,1,2,2,1,1,1],
+    [1,1,1,2,2,1,1,1,1,2,2,1,1,1],
+    [1,1,4,1,1,1,1,1,1,1,1,4,1,1],
+    [1,1,1,1,1,3,3,3,3,1,1,1,1,1],
+    [1,1,1,1,1,3,3,3,3,1,1,1,1,1],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,0,1,0,1,1,0,1,0,1,0,0],
+    [0,0,1,0,1,0,0,0,0,1,0,1,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #3 高瘦型
+  [
+    [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,1,1,4,1,1,4,1,1,1,0,0],
+    [0,0,1,1,1,3,3,3,3,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,0,1,1,0,1,1,0,1,1,0,0,0],
+    [0,0,0,0,1,0,0,0,0,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #4 蘑菇头型
+  [
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,1,1,2,2,1,1,1,1,2,2,1,1,1],
+    [1,1,1,2,2,1,1,1,1,2,2,1,1,1],
+    [0,1,4,1,1,1,1,1,1,1,1,4,1,0],
+    [0,0,1,1,3,3,3,3,3,3,1,1,0,0],
+    [0,0,1,1,3,3,3,3,3,3,1,1,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,0,1,0,1,0,0,1,0,1,0,0,0],
+    [0,0,0,0,0,1,0,0,1,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #5 小矮人型
+  [
+    [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,1,1,2,2,1,1,1,1,2,2,1,1,0],
+    [0,1,1,2,2,1,1,1,1,2,2,1,1,0],
+    [0,1,4,1,1,1,1,1,1,1,1,4,1,0],
+    [0,1,1,1,3,3,3,3,3,3,1,1,1,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,0,1,0,1,0,1,1,0,1,0,1,0,0],
+    [0,0,1,0,1,0,0,0,0,1,0,1,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #6 三角头型
+  [
+    [0,0,0,0,0,0,1,1,0,0,0,0,0,0],
+    [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
+    [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,2,2,1,1,2,2,1,1,0,0],
+    [0,0,1,1,2,2,1,1,2,2,1,1,0,0],
+    [0,1,1,4,1,1,1,1,1,1,4,1,1,0],
+    [0,1,1,1,1,3,3,3,3,1,1,1,1,0],
+    [1,1,1,1,1,3,3,3,3,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,1,0,1,1,0,0,1,1,0,1,1,0],
+    [0,0,1,0,0,1,0,0,0,1,0,0,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+  // #7 章鱼宝宝 (mini)
+  [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,2,2,1,1,1,1,2,2,1,0,0],
+    [0,0,1,1,1,4,1,1,4,1,1,1,0,0],
+    [0,0,1,1,1,3,3,3,3,1,1,1,0,0],
+    [0,0,1,1,1,3,3,3,3,1,1,1,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,0,1,0,1,0,0,1,0,1,0,0,0],
+    [0,0,0,0,0,1,0,0,1,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  ],
+];
+
+// =============================================
+// 16 种表情 [眼睛像素, 嘴巴像素]
+// 坐标相对于眼白区域(2x2)和嘴巴区域的左上角
+// 格式: { eyes: fn(lx,ly,rx,ry) => pixels, mouth: fn(mx,my) => pixels }
+// 返回 [x, y, colorKey] 数组
+// =============================================
+const D = '#1a1a2e'; // dark
+const W = '#ffffff'; // white
+
+function makeExpressions(bodyIdx) {
+  // 找到眼睛和嘴巴区域的坐标
+  const body = BODIES[bodyIdx];
+  let lx, ly, rx, ry, mx, my;
+  let mouthCells = [];
+
+  for (let y = 0; y < 14; y++) {
+    for (let x = 0; x < 14; x++) {
+      if (body[y][x] === 2 && lx === undefined) { lx = x; ly = y; }
+      if (body[y][x] === 2 && x > 7) { rx = Math.min(rx ?? x, x); ry = Math.min(ry ?? y, y); }
+      if (body[y][x] === 3 && mx === undefined) { mx = x; my = y; }
+      if (body[y][x] === 3) mouthCells.push([x, y]);
+    }
+  }
+
+  return { lx, ly, rx, ry, mx, my, mouthCells };
+}
+
+// 表情生成器 - 返回覆盖像素 [x,y,color]
+function getExpression(exprIdx, bodyIdx, bodyColor) {
+  const body = BODIES[bodyIdx];
+  const C = bodyColor;
+  const pixels = [];
+
+  // 收集所有 type=2 (眼) 和 type=3 (嘴) 的位置
+  const eyeL = [], eyeR = [], mouth = [];
+  for (let y = 0; y < 14; y++) {
+    for (let x = 0; x < 14; x++) {
+      if (body[y][x] === 2 && x < 7) eyeL.push([x, y]);
+      if (body[y][x] === 2 && x >= 7) eyeR.push([x, y]);
+      if (body[y][x] === 3) mouth.push([x, y]);
+    }
+  }
+
+  // 眼睛: [左上, 右上, 左下, 右下]
+  const el = eyeL; // 左眼 4格
+  const er = eyeR; // 右眼 4格
+
+  // 嘴巴区域
+  const m = mouth;
+  // 按行分组
+  const mTop = m.filter(([_,y]) => y === m[0][1]);
+  const mBot = m.filter(([_,y]) => y > m[0][1]);
+
+  switch (exprIdx) {
+    case 0: // 平静 - 白眼珠+瞳孔
+      el.forEach(([x,y],i) => pixels.push([x,y, i===3?D:W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i===2?D:W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mTop.length-1)?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 1: // 开心 ^^
+      el.forEach(([x,y],i) => pixels.push([x,y, i<2?D:C]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i<2?D:C]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?D:C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mBot.length-1)?D:C]));
+      break;
+    case 2: // 眨眼
+      el.forEach(([x,y],i) => pixels.push([x,y, i===3?D:W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i>=2?D:C]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mTop.length-1)?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 3: // 惊讶 O_O
+      el.forEach(([x,y]) => pixels.push([x,y,W]));
+      er.forEach(([x,y]) => pixels.push([x,y,W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?C:D]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mBot.length-1)?C:D]));
+      break;
+    case 4: // 困 -_-
+      el.forEach(([x,y],i) => pixels.push([x,y, i>=2?D:C]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i>=2?D:C]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i===Math.floor(mBot.length/2))?D:C]));
+      break;
+    case 5: // 怒 >_<
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===3)?D:C]));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===1||i===2)?D:C]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mBot.length-1)?D:C]));
+      break;
+    case 6: // 爱心眼
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===0)?C:'#ff4466']));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===0)?C:'#ff4466']));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?D:C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mBot.length-1)?D:C]));
+      break;
+    case 7: // 晕 @_@
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===3)?'#aaa':'#666']));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===1||i===2)?'#aaa':'#666']));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===Math.floor(mTop.length/2))?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 8: // 看右 →
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===1||i===3)?D:W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===1||i===3)?D:W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mTop.length-1)?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 9: // 看左 ←
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===2)?D:W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===2)?D:W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mTop.length-1)?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 10: // 吐舌
+      el.forEach(([x,y],i) => pixels.push([x,y, i===3?D:W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i===2?D:W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mTop.length-1)?D:C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mBot.length-1)?'#ff6688':C]));
+      break;
+    case 11: // 星星眼
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===1||i===2)?'#ffd700':W]));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===3)?'#ffd700':W]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?D:C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mBot.length-1)?D:C]));
+      break;
+    case 12: // X_X
+      el.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===3)?D:C]));
+      er.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===3)?D:C]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?C:D]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mBot.length-1)?C:D]));
+      break;
+    case 13: // 墨镜酷
+      el.forEach(([x,y]) => pixels.push([x,y,D]));
+      er.forEach(([x,y]) => pixels.push([x,y,D]));
+      mTop.forEach(([x,y]) => pixels.push([x,y,C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i===Math.floor(mBot.length/2)||i===Math.floor(mBot.length/2)+1)?D:C]));
+      break;
+    case 14: // 哭泣
+      el.forEach(([x,y],i) => pixels.push([x,y, i<2?D:C]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i<2?D:C]));
+      // 泪滴
+      if(el[2]) pixels.push([el[2][0], el[2][1], '#6af']);
+      if(er[3]) pixels.push([er[3][0], er[3][1], '#6af']);
+      mTop.forEach(([x,y],i) => pixels.push([x,y, (i===0||i===mTop.length-1)?D:C]));
+      mBot.forEach(([x,y]) => pixels.push([x,y,C]));
+      break;
+    case 15: // 得意
+      el.forEach(([x,y],i) => pixels.push([x,y, i<2?C:D]));
+      er.forEach(([x,y],i) => pixels.push([x,y, i<2?C:D]));
+      mTop.forEach(([x,y],i) => pixels.push([x,y, C]));
+      mBot.forEach(([x,y],i) => pixels.push([x,y, (i>0&&i<mBot.length-1)?D:C]));
+      break;
+  }
+
+  return pixels;
+}
+
+// =============================================
+// 调色板 - 64 种复古色
+// =============================================
+const PALETTE = [
+  '#D97757','#E8594F','#F4845F','#FF6B6B','#E84393','#FD79A8','#A29BFE','#6C5CE7',
+  '#00D4AA','#00B894','#55EFC4','#10A37F','#81ECEC','#00CEC9','#74B9FF','#0984E3',
+  '#FDCB6E','#F6E58D','#FFEAA7','#FFC048','#E17055','#D63031','#FF7675','#FAB1A0',
+  '#DFE6E9','#B2BEC3','#636E72','#2D3436','#A3CB38','#C4E538','#009432','#006266',
+  '#ED4C67','#B53471','#6F1E51','#833471','#FDA7DF','#D980FA','#9980FA','#5758BB',
+  '#EAB543','#F8C291','#E55039','#EB2F06','#1B9CFC','#3742FA','#2ED573','#7BED9F',
+  '#70A1FF','#5352ED','#FF4757','#FF6348','#FFA502','#ECCC68','#2ED573','#1E90FF',
+  '#C56CF0','#7158E2','#3AE374','#17C0EB','#FF3838','#FF9F1A','#FFF200','#32FF7E',
+];
+
+// 名字
+const NAMES = [
+  'Blaze','Coral','Drift','Echo','Fizz','Glitch','Hex','Indie',
+  'Jinx','Koi','Lux','Mango','Neon','Otto','Pulse','Quirk',
+  'Riff','Spark','Tidal','Unity','Volt','Wave','Xenon','Yoyo',
+  'Zap','Alpha','Byte','Chip','Data','Ether','Flux','Gamma',
+  'Hash','Ion','Jet','Karma','Logic','Mocha','Node','Orbit',
+  'Proto','Qubit','Retro','Synth','Turbo','Ultra','Vibe','Warp',
+  'Pixel','Bits','Cache','Debug','Error','Frame','Grid','Hyper',
+  'Index','Jump','Key','Loop','Macro','Null','Omega','Pi',
+];
+
+// =============================================
+// 渲染
+// =============================================
+function renderOctopus(canvas, index) {
+  const ctx = canvas.getContext('2d');
+  const size = 14;
+  canvas.width = size;
+  canvas.height = size;
+
+  const bodyIdx = index % BODIES.length;
+  const exprIdx = index % 16;
+  const color = PALETTE[index];
+  const body = BODIES[bodyIdx];
+
+  // 深色版作为阴影
+  const shadow = shadeColor(color, -40);
+  const highlight = shadeColor(color, 30);
+  const blush = color + '55';
+
+  // 画身体
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = body[y][x];
+      if (cell >= 1) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
+  // 画高光 (头顶左侧)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (body[y][x] >= 1 && y <= 2 && body[y][x] !== 2) {
+        // 找到最左边的身体像素附近
+        if (x >= 4 && x <= 6 && y >= 1 && y <= 2) {
+          ctx.fillStyle = 'rgba(255,255,255,0.2)';
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }
+
+  // 画腮红
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (body[y][x] === 4) {
+        ctx.fillStyle = blush;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
+  // 画表情 (覆盖眼睛和嘴巴区域)
+  const exprPixels = getExpression(exprIdx, bodyIdx, color);
+  for (const [x, y, c] of exprPixels) {
+    ctx.fillStyle = c;
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
+  const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+  return `rgb(${r},${g},${b})`;
+}
+
+// ── 构建网格 ──
+const grid = document.getElementById('grid');
+
+for (let i = 0; i < 64; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+
+  const canvas = document.createElement('canvas');
+  renderOctopus(canvas, i);
+
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = NAMES[i];
+
+  const idx = document.createElement('div');
+  idx.className = 'idx';
+  idx.textContent = `#${String(i+1).padStart(2,'0')}`;
+
+  cell.appendChild(canvas);
+  cell.appendChild(name);
+  cell.appendChild(idx);
+
+  // 点击交互
+  cell.addEventListener('click', () => {
+    cell.style.transform = 'scale(1.15) rotate(8deg)';
+    cell.style.borderColor = PALETTE[i];
+    cell.style.boxShadow = `0 0 16px ${PALETTE[i]}44`;
+    setTimeout(() => {
+      cell.style.transform = 'scale(0.92) rotate(-5deg)';
+    }, 100);
+    setTimeout(() => {
+      cell.style.transform = '';
+      cell.style.borderColor = '';
+      cell.style.boxShadow = '';
+    }, 280);
+  });
+
+  grid.appendChild(cell);
+}
+</script>
+</body>
+</html>

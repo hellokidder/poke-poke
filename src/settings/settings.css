@@ -1,0 +1,346 @@
+.settings-window {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: rgba(22, 22, 46, 0.98);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 20px 16px 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  -webkit-app-region: drag;
+}
+
+.settings-window-header > * {
+  -webkit-app-region: no-drag;
+}
+
+.settings-window-header h1 {
+  -webkit-app-region: drag;
+}
+
+.sw-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.sw-close-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-window-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #e0e8ff, #c0b0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.02em;
+}
+
+.settings-window-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 28px 24px;
+}
+
+.settings-window-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.settings-window-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Section */
+.sw-section {
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sw-section:last-child {
+  border-bottom: none;
+}
+
+.sw-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sw-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sw-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+/* Custom dropdown */
+.sw-dropdown {
+  flex: 1;
+  position: relative;
+}
+
+.sw-dropdown-trigger {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sw-dropdown-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sw-dropdown-trigger.open {
+  border-color: rgba(160, 120, 255, 0.4);
+}
+
+.sw-dropdown-arrow {
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.sw-dropdown-trigger.open .sw-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.sw-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(30, 30, 58, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.sw-dropdown-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sw-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.sw-dropdown-item {
+  padding: 7px 10px;
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.sw-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.sw-dropdown-item.active {
+  background: rgba(160, 120, 255, 0.15);
+  color: rgba(200, 180, 255, 0.95);
+}
+
+/* Sound row with preview button */
+.sw-sound-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sw-sound-row .sw-select {
+  flex: 1;
+}
+
+.sw-preview-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sw-preview-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Radio group (for timeout) */
+.sw-radio-group {
+  display: flex;
+  gap: 8px;
+}
+
+.sw-radio-option {
+  flex: 1;
+  padding: 8px 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sw-radio-option:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sw-radio-option.active {
+  background: rgba(160, 120, 255, 0.15);
+  border-color: rgba(160, 120, 255, 0.4);
+  color: rgba(200, 180, 255, 0.95);
+}
+
+/* Toggle switch */
+.sw-toggle {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sw-toggle.on {
+  background: rgba(120, 80, 255, 0.5);
+}
+
+.sw-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.sw-toggle.on .sw-toggle-knob {
+  transform: translateX(18px);
+}
+
+/* Shortcut input */
+.sw-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sw-shortcut-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.08em;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  user-select: none;
+  outline: none;
+}
+
+.sw-shortcut-input:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sw-shortcut-input.recording {
+  border-color: rgba(160, 120, 255, 0.6);
+  background: rgba(160, 120, 255, 0.08);
+  color: rgba(160, 120, 255, 0.8);
+  animation: swRecordPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes swRecordPulse {
+  0%, 100% { border-color: rgba(160, 120, 255, 0.3); }
+  50% { border-color: rgba(160, 120, 255, 0.7); }
+}
+
+.sw-shortcut-clear {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sw-shortcut-clear:hover {
+  color: rgba(255, 100, 100, 0.8);
+  background: rgba(255, 100, 100, 0.1);
+}
+
+/* Footer */
+.settings-window-footer {
+  padding: 14px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: center;
+}
+
+.sw-saved-indicator {
+  font-size: 12px;
+  color: rgba(74, 222, 128, 0.8);
+  letter-spacing: 0.02em;
+}

@@ -5,6 +5,7 @@ const SOURCE_COLORS: Record<string, string> = {
   "claude-code": "#D97757",
   cc: "#D97757",
   cursor: "#00D4AA",
+  codex: "#10A37F",
   build: "#4CAF50",
   make: "#4CAF50",
   deploy: "#4FC3F7",

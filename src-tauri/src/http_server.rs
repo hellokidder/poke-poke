@@ -1,5 +1,6 @@
 use crate::notifications::{Priority, Task, TaskStatus, TaskStore};
 use crate::popup::{self, PopupList};
+use crate::settings::SettingsStore;
 use crate::sound;
 use crate::tray;
 use axum::{
@@ -19,6 +20,7 @@ struct AppState {
     app: AppHandle,
     store: Arc<Mutex<TaskStore>>,
     popup_list: PopupList,
+    settings_store: Arc<Mutex<SettingsStore>>,
 }
 
 #[derive(Deserialize)]
@@ -37,11 +39,17 @@ struct NotifyRequest {
     workspace_path: Option<String>,
 }
 
-pub async fn start(app: AppHandle, store: Arc<Mutex<TaskStore>>, popup_list: PopupList) {
+pub async fn start(
+    app: AppHandle,
+    store: Arc<Mutex<TaskStore>>,
+    popup_list: PopupList,
+    settings_store: Arc<Mutex<SettingsStore>>,
+) {
     let state = AppState {
         app,
         store,
         popup_list,
+        settings_store,
     };
 
     let router = Router::new()
@@ -103,6 +111,21 @@ async fn handle_notify(
 
     let _ = state.app.emit("notifications-updated", ());
 
+    // Session-based popup dismiss: when a session resumes (user interacted),
+    // close the existing popup for that session.
+    // pending → running = user approved permission prompt
+    // terminal → running = user started new prompt after completion
+    let should_close_popup = !result.is_new
+        && result.task.status == TaskStatus::Running
+        && result
+            .prev_status
+            .as_ref()
+            .is_some_and(|prev| prev.is_terminal() || *prev == TaskStatus::Pending);
+
+    if should_close_popup {
+        popup::close_popup(&state.app, &result.task.id, &state.popup_list);
+    }
+
     // Popup when status transitions TO a terminal state, or running → pending
     let should_popup = {
         let is_terminal_transition = result.task.status.is_terminal()
@@ -120,8 +143,21 @@ async fn handle_notify(
     };
 
     if should_popup {
-        popup::show_popup(&state.app, &result.task, &state.popup_list);
-        sound::play_alert();
+        // Skip if the user is already focused on this session's terminal
+        let already_focused = result
+            .task
+            .terminal_tty
+            .as_deref()
+            .is_some_and(|tty| !tty.is_empty() && popup::is_terminal_session_focused(tty));
+
+        if !already_focused {
+            let timeout = {
+                let s = state.settings_store.lock().unwrap();
+                s.settings.popup_timeout
+            };
+            popup::show_popup(&state.app, &result.task, &state.popup_list, timeout);
+            sound::play_alert_with_settings(&state.settings_store);
+        }
     }
 
     let unread = state.store.lock().unwrap().unread_count();

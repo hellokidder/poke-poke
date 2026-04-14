@@ -20,6 +20,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "cc_toggle" => handle_cc_toggle(app),
+            "codex_toggle" => handle_codex_toggle(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -40,17 +41,28 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn build_tray_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    let label = if is_cc_connected() {
-        "Claude Code Connected ✓"
+    let cc_label = if is_cc_connected() {
+        "Claude Code Connected \u{2713}"
     } else {
         "Connect Claude Code"
     };
+    let codex_label = if is_codex_connected() {
+        "Codex CLI Connected \u{2713}"
+    } else {
+        "Connect Codex CLI"
+    };
 
-    let connect_item = MenuItemBuilder::with_id("cc_toggle", label).build(app)?;
+    let cc_item = MenuItemBuilder::with_id("cc_toggle", cc_label).build(app)?;
+    let codex_item = MenuItemBuilder::with_id("codex_toggle", codex_label).build(app)?;
+    let cursor_item = MenuItemBuilder::with_id("cursor_info", "Cursor: poke-hook --install-cursor <path>")
+        .enabled(false)
+        .build(app)?;
     let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     MenuBuilder::new(app)
-        .item(&connect_item)
+        .item(&cc_item)
+        .item(&codex_item)
+        .item(&cursor_item)
         .separator()
         .item(&quit_item)
         .build()
@@ -63,6 +75,23 @@ fn is_cc_connected() -> bool {
     }
     Command::new(&hook_path)
         .arg("--check")
+        .output()
+        .ok()
+        .and_then(|o| {
+            let out = String::from_utf8_lossy(&o.stdout);
+            serde_json::from_str::<serde_json::Value>(out.trim()).ok()
+        })
+        .and_then(|v| v["connected"].as_bool())
+        .unwrap_or(false)
+}
+
+fn is_codex_connected() -> bool {
+    let hook_path = hook_bin_path();
+    if !hook_path.exists() {
+        return false;
+    }
+    Command::new(&hook_path)
+        .arg("--check-codex")
         .output()
         .ok()
         .and_then(|o| {
@@ -99,6 +128,35 @@ fn handle_cc_toggle(app: &AppHandle) {
     }
 }
 
+fn handle_codex_toggle(app: &AppHandle) {
+    let hook_path = hook_bin_path();
+    let connected = is_codex_connected();
+    let arg = if connected {
+        "--uninstall-codex"
+    } else {
+        "--install-codex"
+    };
+
+    let bin = if hook_path.exists() {
+        hook_path
+    } else {
+        env_fallback_path()
+    };
+
+    if bin.exists() {
+        let _ = Command::new(&bin).arg(arg).output();
+    } else {
+        eprintln!("[PokePoke] poke-hook binary not found");
+        return;
+    }
+
+    if let Ok(menu) = build_tray_menu(app) {
+        if let Some(tray) = app.tray_by_id("main") {
+            let _ = tray.set_menu(Some(menu));
+        }
+    }
+}
+
 fn hook_bin_path() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
     std::path::PathBuf::from(home).join(".local/bin/poke-hook")
@@ -112,6 +170,9 @@ fn env_fallback_path() -> std::path::PathBuf {
         .join("poke-hook")
 }
 
+const PANEL_W: f64 = 380.0;
+const PANEL_H: f64 = 520.0;
+
 fn toggle_panel(app: &AppHandle, click_x: f64, _click_y: f64) {
     if let Some(window) = app.get_webview_window("panel") {
         if window.is_visible().unwrap_or(false) {
@@ -123,9 +184,6 @@ fn toggle_panel(app: &AppHandle, click_x: f64, _click_y: f64) {
         return;
     }
 
-    let panel_w = 380.0;
-    let panel_h = 520.0;
-
     let scale = app
         .primary_monitor()
         .ok()
@@ -135,12 +193,17 @@ fn toggle_panel(app: &AppHandle, click_x: f64, _click_y: f64) {
     let logical_x = click_x / scale;
     let (screen_width, _) = get_screen_size(app);
 
-    let x = (logical_x - panel_w / 2.0).clamp(8.0, screen_width - panel_w - 8.0);
+    let x = (logical_x - PANEL_W / 2.0).clamp(8.0, screen_width - PANEL_W - 8.0);
     let y = 30.0;
 
+    create_panel_window(app, x, y);
+}
+
+
+fn create_panel_window(app: &AppHandle, x: f64, y: f64) {
     let builder = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("index.html".into()))
         .title("Poke Poke")
-        .inner_size(panel_w, panel_h)
+        .inner_size(PANEL_W, PANEL_H)
         .position(x, y)
         .decorations(false)
         .always_on_top(true)
@@ -159,6 +222,52 @@ fn toggle_panel(app: &AppHandle, click_x: f64, _click_y: f64) {
             }
         });
     }
+}
+
+const SETTINGS_W: f64 = 560.0;
+const SETTINGS_H: f64 = 660.0;
+
+/// Open a standalone settings window (singleton). If already open, focus it.
+pub fn open_settings_window(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("settings") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return;
+    }
+    create_settings_window(app);
+}
+
+/// Toggle the settings window: show if hidden/absent, hide if visible.
+/// Used by the global shortcut.
+pub fn toggle_settings_window(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("settings") {
+        if win.is_visible().unwrap_or(false) {
+            let _ = win.destroy();
+        } else {
+            let _ = win.show();
+            let _ = win.set_focus();
+        }
+        return;
+    }
+    create_settings_window(app);
+}
+
+fn create_settings_window(app: &AppHandle) {
+    let (screen_w, screen_h) = get_screen_size(app);
+    let x = (screen_w - SETTINGS_W) / 2.0;
+    let y = (screen_h - SETTINGS_H) / 2.0;
+
+    let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("index.html".into()))
+        .title("")
+        .inner_size(SETTINGS_W, SETTINGS_H)
+        .position(x, y)
+        .decorations(false)
+        .always_on_top(false)
+        .resizable(false)
+        .skip_taskbar(false)
+        .shadow(true)
+        .transparent(true)
+        .build();
 }
 
 fn get_screen_size(app: &AppHandle) -> (f64, f64) {

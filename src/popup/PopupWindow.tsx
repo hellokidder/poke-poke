@@ -2,21 +2,27 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import SourceIcon from "../icons/SourceIcon";
+import { useT } from "../i18n/context";
 import type { Task } from "../types";
 import "./popup.css";
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const seconds = Math.floor((now - then) / 1000);
-  if (seconds < 60) return "刚刚";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours} 小时前`;
+function useTimeAgo() {
+  const t = useT();
+  return (dateStr: string): string => {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const seconds = Math.floor((now - then) / 1000);
+    if (seconds < 60) return t("time.just_now");
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return t("time.minutes_ago", { n: minutes });
+    const hours = Math.floor(minutes / 60);
+    return t("time.hours_ago", { n: hours });
+  };
 }
 
 export default function PopupWindow() {
+  const t = useT();
+  const timeAgo = useTimeAgo();
   const [task, setTask] = useState<Task | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -36,7 +42,6 @@ export default function PopupWindow() {
 
   const handleClick = async () => {
     if (!task) return;
-    // Focus terminal if possible, then auto-close popup
     if (task.terminal_tty || task.workspace_path) {
       await invoke("focus_task_terminal", { id: task.id });
     }
@@ -73,7 +78,7 @@ export default function PopupWindow() {
           <div className="popup-footer">
             <span className="popup-time">{timeAgo(task.created_at)}</span>
             {canFocus && (
-              <span className="popup-hint">点击跳转</span>
+              <span className="popup-hint">{t("popup.click_to_jump")}</span>
             )}
           </div>
         </div>

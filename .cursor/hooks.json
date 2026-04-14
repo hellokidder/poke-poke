@@ -1,17 +1,29 @@
 {
-  "version": 1,
   "hooks": {
-    "stop": [
+    "beforeSubmitPrompt": [
       {
-        "command": ".cursor/hooks/runPokepokeNotify.sh",
+        "command": "/Users/edy/.local/bin/poke-hook",
         "timeout": 8
       }
     ],
     "sessionEnd": [
       {
-        "command": ".cursor/hooks/runPokepokeNotify.sh",
+        "command": "/Users/edy/.local/bin/poke-hook",
+        "timeout": 8
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "/Users/edy/.local/bin/poke-hook",
+        "timeout": 8
+      }
+    ],
+    "stop": [
+      {
+        "command": "/Users/edy/.local/bin/poke-hook",
         "timeout": 8
       }
     ]
-  }
+  },
+  "version": 1
 }

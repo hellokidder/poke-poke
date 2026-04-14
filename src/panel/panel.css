@@ -97,8 +97,22 @@
 .session-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 2px;
+}
+
+.session-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.session-source {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
 }
 
 .session-project {
@@ -122,6 +136,31 @@
   font-size: 11px;
   color: rgba(255, 255, 255, 0.2);
   margin-top: 2px;
+}
+
+/* Delete button */
+.session-delete-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.session-item:hover .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover {
+  color: rgba(248, 113, 113, 0.9);
+  background: rgba(248, 113, 113, 0.1);
 }
 
 /* Status dot */
@@ -152,10 +191,31 @@
 
 /* Footer */
 .panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px 18px;
-  text-align: center;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   letter-spacing: 0.02em;
 }
+
+.settings-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.settings-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+

@@ -119,8 +119,10 @@ impl TaskStore {
             if existing.status == TaskStatus::Pending && prev_status == TaskStatus::Running {
                 existing.read = false;
             }
-            // pending → running: user handled it, auto-clear
-            if existing.status == TaskStatus::Running && prev_status == TaskStatus::Pending {
+            // pending/terminal → running: user resumed session, auto-clear
+            if existing.status == TaskStatus::Running
+                && (prev_status == TaskStatus::Pending || prev_status.is_terminal())
+            {
                 existing.read = true;
             }
             let task = existing.clone();
@@ -195,5 +197,51 @@ impl TaskStore {
         } else {
             false
         }
+    }
+
+    /// Remove terminal-state sessions (success/failed) older than `retention_hours`.
+    /// Running/Pending sessions are never removed.
+    /// Returns the number of sessions removed.
+    pub fn cleanup_expired(&mut self, retention_hours: u32) -> usize {
+        let cutoff = Utc::now() - chrono::Duration::hours(retention_hours as i64);
+        let before = self.tasks.len();
+        self.tasks.retain(|t| {
+            // Keep running/pending sessions always
+            if !t.status.is_terminal() {
+                return true;
+            }
+            // Keep terminal sessions newer than cutoff
+            t.updated_at > cutoff
+        });
+        let removed = before - self.tasks.len();
+        if removed > 0 {
+            self.save();
+        }
+        removed
+    }
+
+    /// Detect running sessions whose terminal_tty no longer exists (terminal closed).
+    /// Marks them as Failed with "Session lost" message.
+    /// Returns the number of sessions reaped.
+    pub fn reap_stale_sessions(&mut self) -> usize {
+        let mut reaped = 0;
+        for task in &mut self.tasks {
+            if task.status != TaskStatus::Running {
+                continue;
+            }
+            if let Some(ref tty) = task.terminal_tty {
+                if !tty.is_empty() && !std::path::Path::new(tty).exists() {
+                    task.status = TaskStatus::Failed;
+                    task.message = "Session lost".into();
+                    task.read = false;
+                    task.updated_at = Utc::now();
+                    reaped += 1;
+                }
+            }
+        }
+        if reaped > 0 {
+            self.save();
+        }
+        reaped
     }
 }
