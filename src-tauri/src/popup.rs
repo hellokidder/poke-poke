@@ -1,4 +1,4 @@
-use crate::notifications::Task;
+use crate::sessions::Session;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -15,8 +15,8 @@ pub fn create_popup_list() -> PopupList {
     Arc::new(Mutex::new(Vec::new()))
 }
 
-pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList, timeout_secs: u32) {
-    let label = format!("popup-{}", task.id);
+pub fn show_popup(app: &AppHandle, session: &Session, popup_list: &PopupList) {
+    let label = format!("popup-{}", session.id);
 
     let (x, y) = calculate_position(app, popup_list);
 
@@ -41,28 +41,11 @@ pub fn show_popup(app: &AppHandle, task: &Task, popup_list: &PopupList, timeout_
                 list.push(label);
             }
 
-            // Auto-dismiss after timeout (0 = never)
-            if timeout_secs > 0 {
-                let app_clone = app.clone();
-                let popup_list_clone = popup_list.clone();
-                let task_id = task.id.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_secs(timeout_secs as u64));
-                    let still_exists = popup_list_clone
-                        .lock()
-                        .map(|list| list.contains(&format!("popup-{}", task_id)))
-                        .unwrap_or(false);
-                    if still_exists {
-                        close_popup(&app_clone, &task_id, &popup_list_clone);
-                    }
-                });
-            }
-
             // Auto-dismiss when user focuses the associated terminal session
-            if let Some(ref tty) = task.terminal_tty {
+            if let Some(ref tty) = session.terminal_tty {
                 let app_clone = app.clone();
                 let popup_list_clone = popup_list.clone();
-                let id = task.id.clone();
+                let id = session.id.clone();
                 let tty = tty.clone();
                 std::thread::spawn(move || {
                     loop {

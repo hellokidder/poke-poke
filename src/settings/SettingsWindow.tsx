@@ -7,7 +7,6 @@ import "./settings.css";
 interface Settings {
   panel_shortcut: string | null;
   alert_sound: string;
-  popup_timeout: number;
   locale: string;
   auto_start: boolean;
   session_retention_hours: number;
@@ -81,7 +80,6 @@ function formatShortcut(s: string): string {
     .replace(/\+/g, " ");
 }
 
-const TIMEOUT_OPTIONS = [0, 10, 30];
 const RETENTION_OPTIONS = [
   { value: 1, labelKey: "settings.hours", n: 1 },
   { value: 24, labelKey: "settings.hours", n: 24 },
@@ -172,10 +170,6 @@ export default function SettingsWindow() {
     invoke("preview_sound", { name });
   };
 
-  const handleTimeoutChange = (val: number) => {
-    saveField("popup_timeout", val);
-  };
-
   const handleLocaleChange = (val: string) => {
     saveField("locale", val);
   };
@@ -247,23 +241,6 @@ export default function SettingsWindow() {
                 {t("settings.preview")}
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Popup timeout */}
-        <div className="sw-section">
-          <div className="sw-label">{t("settings.timeout")}</div>
-          <div className="sw-desc">{t("settings.timeout_desc")}</div>
-          <div className="sw-radio-group">
-            {TIMEOUT_OPTIONS.map((val) => (
-              <div
-                key={val}
-                className={`sw-radio-option ${settings.popup_timeout === val ? "active" : ""}`}
-                onClick={() => handleTimeoutChange(val)}
-              >
-                {val === 0 ? t("settings.never") : t("settings.seconds", { n: val })}
-              </div>
-            ))}
           </div>
         </div>
 

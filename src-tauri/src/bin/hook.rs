@@ -766,8 +766,8 @@ fn handle_cursor_stop(task_id: &str, project: &str, cwd: &str, hook_status: &str
 
     let (status, msg) = match hook_status {
         "completed" => ("success", "Agent turn completed"),
-        "aborted" => ("failed", "Agent turn aborted"),
-        _ => ("failed", "Agent turn ended with error"),
+        "aborted" => ("success", "Agent turn aborted"),
+        _ => ("success", "Agent turn ended with error"),
     };
 
     let payload = serde_json::json!({

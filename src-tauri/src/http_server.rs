@@ -1,10 +1,9 @@
-use crate::notifications::{Priority, Task, TaskStatus, TaskStore};
 use crate::popup::{self, PopupList};
+use crate::sessions::{Priority, Session, SessionStatus, SessionStore};
 use crate::settings::SettingsStore;
 use crate::sound;
-use crate::tray;
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::Json,
     routing::{get, post},
@@ -18,7 +17,7 @@ use tauri::{AppHandle, Emitter};
 #[derive(Clone)]
 struct AppState {
     app: AppHandle,
-    store: Arc<Mutex<TaskStore>>,
+    store: Arc<Mutex<SessionStore>>,
     popup_list: PopupList,
     settings_store: Arc<Mutex<SettingsStore>>,
 }
@@ -41,7 +40,7 @@ struct NotifyRequest {
 
 pub async fn start(
     app: AppHandle,
-    store: Arc<Mutex<TaskStore>>,
+    store: Arc<Mutex<SessionStore>>,
     popup_list: PopupList,
     settings_store: Arc<Mutex<SettingsStore>>,
 ) {
@@ -54,9 +53,7 @@ pub async fn start(
 
     let router = Router::new()
         .route("/notify", post(handle_notify))
-        .route("/notifications", get(handle_list))
-        .route("/notifications/{id}/read", post(handle_mark_read))
-        .route("/notifications/read-all", post(handle_mark_all_read))
+        .route("/sessions", get(handle_list))
         .with_state(state);
 
     let addr: SocketAddr = "127.0.0.1:9876".parse().unwrap();
@@ -89,15 +86,14 @@ async fn handle_notify(
     };
 
     let status = match req.status.as_deref() {
-        Some("running") => TaskStatus::Running,
-        Some("success") => TaskStatus::Success,
-        Some("failed") => TaskStatus::Failed,
-        _ => TaskStatus::Pending,
+        Some("running") => SessionStatus::Running,
+        Some("success") | Some("failed") => SessionStatus::Success,
+        _ => SessionStatus::Pending,
     };
 
     let result = {
         let mut store = state.store.lock().unwrap();
-        store.upsert_task(
+        store.upsert_session(
             req.task_id,
             req.title,
             req.message,
@@ -109,50 +105,51 @@ async fn handle_notify(
         )
     };
 
-    let _ = state.app.emit("notifications-updated", ());
+    let _ = state.app.emit("sessions-updated", ());
 
     // Session-based popup dismiss: when a session resumes (user interacted),
     // close the existing popup for that session.
     // pending → running = user approved permission prompt
     // terminal → running = user started new prompt after completion
     let should_close_popup = !result.is_new
-        && result.task.status == TaskStatus::Running
+        && result.session.status == SessionStatus::Running
         && result
             .prev_status
             .as_ref()
-            .is_some_and(|prev| prev.is_terminal() || *prev == TaskStatus::Pending);
+            .is_some_and(|prev| prev.is_terminal() || *prev == SessionStatus::Pending);
 
     if should_close_popup {
-        popup::close_popup(&state.app, &result.task.id, &state.popup_list);
+        popup::close_popup(&state.app, &result.session.id, &state.popup_list);
     }
 
     // Popup when status transitions TO a terminal state, or running → pending
     let should_popup = {
-        let is_terminal_transition = result.task.status.is_terminal()
+        let is_terminal_transition = result.session.status.is_terminal()
             && match &result.prev_status {
-                Some(prev) => prev != &result.task.status,
-                None => true, // new task created directly as success/failed
+                Some(prev) => prev != &result.session.status,
+                None => true,
             };
-        let is_pending_transition = result.task.status == TaskStatus::Pending
+        let is_pending_transition = result.session.status == SessionStatus::Pending
             && match &result.prev_status {
-                Some(TaskStatus::Running) => true, // running → pending
-                None => true,                      // new task created directly as pending
+                Some(SessionStatus::Running) => true,
+                None => true,
                 _ => false,
             };
         is_terminal_transition || is_pending_transition
     };
 
     if should_popup {
-        let timeout = {
-            let s = state.settings_store.lock().unwrap();
-            s.settings.popup_timeout
-        };
-        popup::show_popup(&state.app, &result.task, &state.popup_list, timeout);
-        sound::play_alert_with_settings(&state.settings_store);
-    }
+        let already_focused = result
+            .session
+            .terminal_tty
+            .as_deref()
+            .is_some_and(|tty| !tty.is_empty() && popup::is_terminal_session_focused(tty));
 
-    let unread = state.store.lock().unwrap().unread_count();
-    tray::update_tray_icon(&state.app, unread);
+        if !already_focused {
+            popup::show_popup(&state.app, &result.session, &state.popup_list);
+            sound::play_alert_with_settings(&state.settings_store);
+        }
+    }
 
     let code = if result.is_new {
         StatusCode::CREATED
@@ -160,37 +157,10 @@ async fn handle_notify(
         StatusCode::OK
     };
 
-    (code, Json(serde_json::to_value(&result.task).unwrap()))
+    (code, Json(serde_json::to_value(&result.session).unwrap()))
 }
 
-async fn handle_list(State(state): State<AppState>) -> Json<Vec<Task>> {
+async fn handle_list(State(state): State<AppState>) -> Json<Vec<Session>> {
     let store = state.store.lock().unwrap();
     Json(store.get_all().to_vec())
-}
-
-async fn handle_mark_read(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> StatusCode {
-    let unread = {
-        let mut store = state.store.lock().unwrap();
-        if store.mark_read(&id) {
-            let _ = state.app.emit("notifications-updated", ());
-            store.unread_count()
-        } else {
-            return StatusCode::NOT_FOUND;
-        }
-    };
-    tray::update_tray_icon(&state.app, unread);
-    StatusCode::OK
-}
-
-async fn handle_mark_all_read(State(state): State<AppState>) -> StatusCode {
-    {
-        let mut store = state.store.lock().unwrap();
-        store.mark_all_read();
-        let _ = state.app.emit("notifications-updated", ());
-    }
-    tray::update_tray_icon(&state.app, 0);
-    StatusCode::OK
 }

@@ -12,7 +12,6 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.running": "运行中",
     "status.pending": "等待中",
     "status.success": "已完成",
-    "status.failed": "失败",
 
     // Panel
     "panel.active_count": "{n} 个活跃",
@@ -27,12 +26,8 @@ export const strings: Record<Locale, Record<string, string>> = {
     // Settings
     "settings.title": "设置",
     "settings.sound": "提示音",
-    "settings.sound_desc": "任务状态变化时的通知声音",
+    "settings.sound_desc": "会话状态变化时的提示音",
     "settings.mute": "静音",
-    "settings.timeout": "弹窗自动消失",
-    "settings.timeout_desc": "弹窗自动关闭的等待时间",
-    "settings.never": "永不",
-    "settings.seconds": "{n} 秒",
     "settings.language": "语言",
     "settings.language_desc": "界面显示语言",
     "settings.autostart": "开机自启",
@@ -60,7 +55,6 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.running": "Running",
     "status.pending": "Pending",
     "status.success": "Completed",
-    "status.failed": "Failed",
 
     // Panel
     "panel.active_count": "{n} active",
@@ -75,12 +69,8 @@ export const strings: Record<Locale, Record<string, string>> = {
     // Settings
     "settings.title": "Settings",
     "settings.sound": "Alert Sound",
-    "settings.sound_desc": "Notification sound on task status changes",
+    "settings.sound_desc": "Alert sound on session status changes",
     "settings.mute": "Mute",
-    "settings.timeout": "Popup Auto-Dismiss",
-    "settings.timeout_desc": "Time before popup automatically closes",
-    "settings.never": "Never",
-    "settings.seconds": "{n}s",
     "settings.language": "Language",
     "settings.language_desc": "Display language",
     "settings.autostart": "Launch at Login",

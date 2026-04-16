@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import SourceIcon from "../icons/SourceIcon";
 import { useT } from "../i18n/context";
-import type { Task, TaskStatus } from "../types";
+import type { Session, SessionStatus } from "../types";
 import "./panel.css";
 
 function useTimeAgo() {
@@ -22,13 +22,12 @@ function useTimeAgo() {
   };
 }
 
-function StatusDot({ status }: { status: TaskStatus }) {
+function StatusDot({ status }: { status: SessionStatus }) {
   const t = useT();
-  const config: Record<TaskStatus, { color: string; label: string; animate: boolean }> = {
+  const config: Record<SessionStatus, { color: string; label: string; animate: boolean }> = {
     running: { color: "#4ade80", label: t("status.running"), animate: true },
     pending: { color: "#facc15", label: t("status.pending"), animate: true },
     success: { color: "rgba(255,255,255,0.25)", label: t("status.success"), animate: false },
-    failed: { color: "#f87171", label: t("status.failed"), animate: false },
   };
   const c = config[status];
   return (
@@ -38,9 +37,9 @@ function StatusDot({ status }: { status: TaskStatus }) {
   );
 }
 
-function projectName(task: Task): string {
-  const match = task.title.match(/:\s*(.+)/);
-  return match ? match[1] : task.title;
+function projectName(session: Session): string {
+  const match = session.title.match(/:\s*(.+)/);
+  return match ? match[1] : session.title;
 }
 
 function sourceLabel(source: string | null): string {
@@ -52,29 +51,29 @@ function sourceLabel(source: string | null): string {
   }
 }
 
-function workspacePath(task: Task): string {
-  if (!task.workspace_path) return "";
-  return task.workspace_path.replace(/^\/Users\/[^/]+/, "~");
+function workspacePath(session: Session): string {
+  if (!session.workspace_path) return "";
+  return session.workspace_path.replace(/^\/Users\/[^/]+/, "~");
 }
 
-function isActive(t: Task): boolean {
-  return t.status === "running" || t.status === "pending";
+function isActive(s: Session): boolean {
+  return s.status === "running" || s.status === "pending";
 }
 
-export default function NotificationPanel() {
+export default function SessionPanel() {
   const t = useT();
   const timeAgo = useTimeAgo();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-  const loadTasks = async () => {
-    const data = await invoke<Task[]>("get_notifications");
-    setTasks(data);
+  const loadSessions = async () => {
+    const data = await invoke<Session[]>("get_sessions");
+    setSessions(data);
   };
 
   useEffect(() => {
-    loadTasks();
-    const unlisten = listen("notifications-updated", () => {
-      loadTasks();
+    loadSessions();
+    const unlisten = listen("sessions-updated", () => {
+      loadSessions();
     });
     return () => {
       unlisten.then((fn) => fn());
@@ -82,14 +81,14 @@ export default function NotificationPanel() {
   }, []);
 
   const handleClick = (id: string) => {
-    invoke("open_task_source", { id });
+    invoke("open_session_source", { id });
   };
 
   const openSettings = () => {
     invoke("open_settings_window");
   };
 
-  const sorted = [...tasks].sort((a, b) =>
+  const sorted = [...sessions].sort((a, b) =>
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
@@ -108,31 +107,31 @@ export default function NotificationPanel() {
         {sorted.length === 0 ? (
           <div className="panel-empty">{t("panel.empty")}</div>
         ) : (
-          sorted.map((task) => (
+          sorted.map((session) => (
             <div
-              key={task.id}
-              className={`session-item ${isActive(task) ? "" : "inactive"}`}
-              onClick={() => handleClick(task.id)}
+              key={session.id}
+              className={`session-item ${isActive(session) ? "" : "inactive"}`}
+              onClick={() => handleClick(session.id)}
             >
-              <SourceIcon source={task.source} status={task.status} colorSeed={task.task_id} />
+              <SourceIcon source={session.source} status={session.status} colorSeed={session.task_id} />
               <div className="session-info">
                 <div className="session-header">
-                  <span className="session-project">{projectName(task)}</span>
+                  <span className="session-project">{projectName(session)}</span>
                   <div className="session-header-right">
-                    <span className="session-source">{sourceLabel(task.source)}</span>
-                    <StatusDot status={task.status} />
+                    <span className="session-source">{sourceLabel(session.source)}</span>
+                    <StatusDot status={session.status} />
                   </div>
                 </div>
-                <div className="session-path">{workspacePath(task)}</div>
-                <div className="session-time">{timeAgo(task.updated_at)}</div>
+                <div className="session-path">{workspacePath(session)}</div>
+                <div className="session-time">{timeAgo(session.updated_at)}</div>
               </div>
-              {!isActive(task) && (
+              {!isActive(session) && (
                 <button
                   className="session-delete-btn"
                   title={t("panel.delete")}
                   onClick={(e) => {
                     e.stopPropagation();
-                    invoke("remove_notification", { id: task.id });
+                    invoke("remove_session", { id: session.id });
                   }}
                 >
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

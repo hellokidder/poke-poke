@@ -1,5 +1,5 @@
-use crate::notifications::{Task, TaskStore};
 use crate::popup::{self, PopupList};
+use crate::sessions::{Session, SessionStore};
 use crate::settings::{Settings, SettingsStore};
 use crate::shortcut;
 use crate::tray;
@@ -8,67 +8,34 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
-pub fn get_notifications(
-    store: State<'_, Arc<Mutex<TaskStore>>>,
-) -> Vec<Task> {
+pub fn get_sessions(
+    store: State<'_, Arc<Mutex<SessionStore>>>,
+) -> Vec<Session> {
     store.lock().unwrap().get_all().to_vec()
 }
 
 #[tauri::command]
-pub fn get_unread_count(store: State<'_, Arc<Mutex<TaskStore>>>) -> usize {
-    store.lock().unwrap().unread_count()
-}
-
-#[tauri::command]
-pub fn get_notification_by_id(
+pub fn get_session_by_id(
     id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
-) -> Option<Task> {
+    store: State<'_, Arc<Mutex<SessionStore>>>,
+) -> Option<Session> {
     let s = store.lock().unwrap();
-    s.get_all().iter().find(|t| t.id == id).cloned()
+    s.get_all().iter().find(|s| s.id == id).cloned()
 }
 
-#[tauri::command]
-pub fn mark_notification_read(
-    id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
-    popup_list: State<'_, PopupList>,
-    app: AppHandle,
-) {
-    let unread_count = {
-        let mut s = store.lock().unwrap();
-        s.mark_read(&id);
-        s.unread_count()
-    };
-    popup::close_popup(&app, &id, &popup_list);
-    tray::update_tray_icon(&app, unread_count);
-}
-
-#[tauri::command]
-pub fn mark_all_read(
-    store: State<'_, Arc<Mutex<TaskStore>>>,
-    app: AppHandle,
-) {
-    {
-        let mut s = store.lock().unwrap();
-        s.mark_all_read();
-    }
-    tray::update_tray_icon(&app, 0);
-}
-
-/// Focus the terminal that matches the task's tty.
+/// Focus the terminal that matches the session's tty.
 /// Does NOT close the popup — the frontend handles that separately
 /// to avoid destroying the calling webview mid-command.
 #[tauri::command]
-pub fn focus_task_terminal(
+pub fn focus_session_terminal(
     id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
+    store: State<'_, Arc<Mutex<SessionStore>>>,
 ) {
     let (terminal_tty, workspace_path, source) = {
         let s = store.lock().unwrap();
-        let task = s.get_all().iter().find(|t| t.id == id).cloned();
-        match task {
-            Some(t) => (t.terminal_tty, t.workspace_path, t.source),
+        let session = s.get_all().iter().find(|s| s.id == id).cloned();
+        match session {
+            Some(s) => (s.terminal_tty, s.workspace_path, s.source),
             None => return,
         }
     };
@@ -79,7 +46,7 @@ pub fn focus_task_terminal(
         }
     }
 
-    // For Cursor tasks, open Cursor.app with the workspace
+    // For Cursor sessions, open Cursor.app with the workspace
     if let Some(ref src) = source {
         if src == "cursor" {
             if let Some(ref path) = workspace_path {
@@ -99,17 +66,17 @@ pub fn focus_task_terminal(
     }
 }
 
-/// Focus the terminal window that spawned the task (used by panel clicks).
+/// Focus the terminal window that spawned the session (used by panel clicks).
 #[tauri::command]
-pub fn open_task_source(
+pub fn open_session_source(
     id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
+    store: State<'_, Arc<Mutex<SessionStore>>>,
 ) {
     let (terminal_tty, workspace_path, source) = {
         let s = store.lock().unwrap();
-        let task = s.get_all().iter().find(|t| t.id == id).cloned();
-        match task {
-            Some(t) => (t.terminal_tty, t.workspace_path, t.source),
+        let session = s.get_all().iter().find(|s| s.id == id).cloned();
+        match session {
+            Some(s) => (s.terminal_tty, s.workspace_path, s.source),
             None => return,
         }
     };
@@ -120,7 +87,7 @@ pub fn open_task_source(
         }
     }
 
-    // For Cursor tasks, open Cursor.app with the workspace
+    // For Cursor sessions, open Cursor.app with the workspace
     if let Some(ref src) = source {
         if src == "cursor" {
             if let Some(ref path) = workspace_path {
@@ -152,11 +119,9 @@ fn is_app_running(app_name: &str) -> bool {
 /// Only tries terminal apps that are already running to avoid
 /// launching unwanted apps (e.g. Terminal.app when user uses iTerm2).
 fn focus_terminal(tty: &str) -> bool {
-    // iTerm2 first (most common dev terminal on macOS)
     if is_app_running("iTerm2") && focus_iterm2(tty) {
         return true;
     }
-    // Then Terminal.app
     if is_app_running("Terminal") && focus_terminal_app(tty) {
         return true;
     }
@@ -164,7 +129,6 @@ fn focus_terminal(tty: &str) -> bool {
 }
 
 fn focus_iterm2(tty: &str) -> bool {
-    // Step 1: Use AppleScript to find and select the right window/tab/session
     let script = format!(
         r#"tell application "iTerm2"
     repeat with w in windows
@@ -187,9 +151,6 @@ end tell"#,
         return false;
     }
 
-    // Step 2: Use `open -a` to reliably activate iTerm2.
-    // AppleScript's `activate` doesn't work reliably when called from
-    // a Tauri (non-terminal) app context; `open -a` is more robust.
     let _ = Command::new("open").args(["-a", "iTerm"]).output();
     true
 }
@@ -286,36 +247,27 @@ pub fn check_cursor_integration(project_path: String) -> serde_json::Value {
 }
 
 #[tauri::command]
-pub fn remove_notification(
+pub fn remove_session(
     id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
+    store: State<'_, Arc<Mutex<SessionStore>>>,
     popup_list: State<'_, PopupList>,
     app: AppHandle,
 ) {
-    let unread_count = {
+    {
         let mut s = store.lock().unwrap();
-        s.remove_task(&id);
-        s.unread_count()
-    };
+        s.remove_session(&id);
+    }
     popup::close_popup(&app, &id, &popup_list);
-    tray::update_tray_icon(&app, unread_count);
-    let _ = app.emit("notifications-updated", ());
+    let _ = app.emit("sessions-updated", ());
 }
 
 #[tauri::command]
 pub fn close_popup_window(
     id: String,
-    store: State<'_, Arc<Mutex<TaskStore>>>,
     popup_list: State<'_, PopupList>,
     app: AppHandle,
 ) {
-    let unread_count = {
-        let mut s = store.lock().unwrap();
-        s.mark_read(&id);
-        s.unread_count()
-    };
     popup::close_popup(&app, &id, &popup_list);
-    tray::update_tray_icon(&app, unread_count);
 }
 
 #[tauri::command]
@@ -333,9 +285,7 @@ pub fn save_settings(
         let mut s = store.lock().unwrap();
         s.update(settings);
     }
-    // Re-register shortcut with the new settings
     shortcut::apply_shortcut(&app);
-    // Notify all windows that settings changed (for locale etc.)
     let _ = app.emit("settings-updated", ());
 }
 

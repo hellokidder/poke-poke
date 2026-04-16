@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import SourceIcon from "../icons/SourceIcon";
 import { useT } from "../i18n/context";
-import type { Task } from "../types";
+import type { Session } from "../types";
 import "./popup.css";
 
 function useTimeAgo() {
@@ -23,16 +23,16 @@ function useTimeAgo() {
 export default function PopupWindow() {
   const t = useT();
   const timeAgo = useTimeAgo();
-  const [task, setTask] = useState<Task | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const label = getCurrentWebviewWindow().label;
     const id = label.replace("popup-", "");
 
-    invoke<Task | null>("get_notification_by_id", { id }).then((data) => {
+    invoke<Session | null>("get_session_by_id", { id }).then((data) => {
       if (data) {
-        setTask(data);
+        setSession(data);
         requestAnimationFrame(() => {
           setVisible(true);
         });
@@ -41,20 +41,20 @@ export default function PopupWindow() {
   }, []);
 
   const handleClick = async () => {
-    if (!task) return;
-    if (task.terminal_tty || task.workspace_path) {
-      await invoke("focus_task_terminal", { id: task.id });
+    if (!session) return;
+    if (session.terminal_tty || session.workspace_path) {
+      await invoke("focus_session_terminal", { id: session.id });
     }
     setVisible(false);
-    await invoke("close_popup_window", { id: task.id });
+    await invoke("close_popup_window", { id: session.id });
   };
 
-  if (!task) {
+  if (!session) {
     return <div className="popup-container" />;
   }
 
-  const statusClass = task.status === "failed" ? "failed" : task.status === "success" ? "success" : task.status === "pending" ? "pending" : "";
-  const canFocus = !!(task.terminal_tty || task.workspace_path);
+  const statusClass = session.status === "success" ? "success" : session.status === "pending" ? "pending" : "";
+  const canFocus = !!(session.terminal_tty || session.workspace_path);
 
   return (
     <div
@@ -65,18 +65,18 @@ export default function PopupWindow() {
       <div className="popup-glow" />
       <div className="popup-body">
         <div className="popup-left">
-          <SourceIcon source={task.source} status={task.status} colorSeed={task.task_id} />
+          <SourceIcon source={session.source} status={session.status} colorSeed={session.task_id} />
         </div>
         <div className="popup-right">
           <div className="popup-header">
-            <span className="popup-title">{task.title}</span>
-            {task.source && (
-              <span className="popup-source">{task.source}</span>
+            <span className="popup-title">{session.title}</span>
+            {session.source && (
+              <span className="popup-source">{session.source}</span>
             )}
           </div>
-          <div className="popup-message">{task.message}</div>
+          <div className="popup-message">{session.message}</div>
           <div className="popup-footer">
-            <span className="popup-time">{timeAgo(task.created_at)}</span>
+            <span className="popup-time">{timeAgo(session.created_at)}</span>
             {canFocus && (
               <span className="popup-hint">{t("popup.click_to_jump")}</span>
             )}

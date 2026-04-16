@@ -12,10 +12,6 @@ pub struct Settings {
     #[serde(default = "default_sound")]
     pub alert_sound: String,
 
-    /// Popup auto-dismiss timeout in seconds. 0 = never auto-dismiss.
-    #[serde(default)]
-    pub popup_timeout: u32,
-
     /// UI locale: "zh" or "en"
     #[serde(default = "default_locale")]
     pub locale: String,
@@ -46,7 +42,6 @@ impl Default for Settings {
         Self {
             panel_shortcut: None,
             alert_sound: default_sound(),
-            popup_timeout: 0,
             locale: default_locale(),
             auto_start: false,
             session_retention_hours: default_retention(),
