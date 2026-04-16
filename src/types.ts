@@ -1,14 +1,13 @@
-export type TaskStatus = "pending" | "running" | "success" | "failed";
+export type SessionStatus = "pending" | "running" | "success";
 
-export interface Task {
+export interface Session {
   id: string;
   task_id: string;
   title: string;
   message: string;
   source: string | null;
   priority: "normal" | "high";
-  status: TaskStatus;
-  read: boolean;
+  status: SessionStatus;
   created_at: string;
   updated_at: string;
   terminal_tty: string | null;

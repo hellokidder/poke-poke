@@ -13,22 +13,21 @@ pub enum Priority {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum TaskStatus {
+pub enum SessionStatus {
     #[default]
     Pending,
     Running,
     Success,
-    Failed,
 }
 
-impl TaskStatus {
+impl SessionStatus {
     pub fn is_terminal(&self) -> bool {
-        matches!(self, TaskStatus::Success | TaskStatus::Failed)
+        matches!(self, SessionStatus::Success)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Task {
+pub struct Session {
     pub id: String,
     pub task_id: String,
     pub title: String,
@@ -38,8 +37,7 @@ pub struct Task {
     #[serde(default)]
     pub priority: Priority,
     #[serde(default)]
-    pub status: TaskStatus,
-    pub read: bool,
+    pub status: SessionStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[serde(default)]
@@ -48,21 +46,21 @@ pub struct Task {
     pub workspace_path: Option<String>,
 }
 
-pub struct TaskStore {
-    pub tasks: Vec<Task>,
+pub struct SessionStore {
+    pub sessions: Vec<Session>,
     file_path: PathBuf,
 }
 
-/// Return value from upsert: the task, whether it's new, and the previous status if updated
+/// Return value from upsert: the session, whether it's new, and the previous status if updated
 pub struct UpsertResult {
-    pub task: Task,
+    pub session: Session,
     pub is_new: bool,
-    pub prev_status: Option<TaskStatus>,
+    pub prev_status: Option<SessionStatus>,
 }
 
-impl TaskStore {
+impl SessionStore {
     pub fn load(file_path: PathBuf) -> Self {
-        let tasks = if file_path.exists() {
+        let sessions = if file_path.exists() {
             fs::read_to_string(&file_path)
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
@@ -70,7 +68,10 @@ impl TaskStore {
         } else {
             Vec::new()
         };
-        Self { tasks, file_path }
+        Self {
+            sessions,
+            file_path,
+        }
     }
 
     fn save(&self) {
@@ -79,23 +80,23 @@ impl TaskStore {
         }
         let _ = fs::write(
             &self.file_path,
-            serde_json::to_string_pretty(&self.tasks).unwrap_or_default(),
+            serde_json::to_string_pretty(&self.sessions).unwrap_or_default(),
         );
     }
 
-    pub fn upsert_task(
+    pub fn upsert_session(
         &mut self,
         task_id: String,
         title: String,
         message: String,
         source: Option<String>,
         priority: Priority,
-        status: TaskStatus,
+        status: SessionStatus,
         terminal_tty: Option<String>,
         workspace_path: Option<String>,
     ) -> UpsertResult {
-        // Try to find existing task by task_id
-        if let Some(existing) = self.tasks.iter_mut().find(|t| t.task_id == task_id) {
+        // Try to find existing session by task_id
+        if let Some(existing) = self.sessions.iter_mut().find(|s| s.task_id == task_id) {
             let prev_status = existing.status.clone();
             existing.title = title;
             existing.message = message;
@@ -111,30 +112,16 @@ impl TaskStore {
             if workspace_path.is_some() {
                 existing.workspace_path = workspace_path;
             }
-            // Mark unread when transitioning to terminal state
-            if existing.status.is_terminal() && !prev_status.is_terminal() {
-                existing.read = false;
-            }
-            // running → pending: needs user attention
-            if existing.status == TaskStatus::Pending && prev_status == TaskStatus::Running {
-                existing.read = false;
-            }
-            // pending/terminal → running: user resumed session, auto-clear
-            if existing.status == TaskStatus::Running
-                && (prev_status == TaskStatus::Pending || prev_status.is_terminal())
-            {
-                existing.read = true;
-            }
-            let task = existing.clone();
+            let session = existing.clone();
             self.save();
             UpsertResult {
-                task,
+                session,
                 is_new: false,
                 prev_status: Some(prev_status),
             }
         } else {
             let now = Utc::now();
-            let task = Task {
+            let session = Session {
                 id: uuid::Uuid::new_v4().to_string(),
                 task_id,
                 title,
@@ -142,25 +129,29 @@ impl TaskStore {
                 source,
                 priority,
                 status,
-                read: false,
                 created_at: now,
                 updated_at: now,
                 terminal_tty,
                 workspace_path,
             };
-            self.tasks.insert(0, task.clone());
+            self.sessions.insert(0, session.clone());
             self.save();
             UpsertResult {
-                task,
+                session,
                 is_new: true,
                 prev_status: None,
             }
         }
     }
 
-    pub fn mark_read(&mut self, id: &str) -> bool {
-        if let Some(t) = self.tasks.iter_mut().find(|t| t.id == id) {
-            t.read = true;
+    pub fn get_all(&self) -> &[Session] {
+        &self.sessions
+    }
+
+    pub fn remove_session(&mut self, id: &str) -> bool {
+        let len = self.sessions.len();
+        self.sessions.retain(|s| s.id != id);
+        if self.sessions.len() < len {
             self.save();
             true
         } else {
@@ -168,52 +159,19 @@ impl TaskStore {
         }
     }
 
-    pub fn mark_all_read(&mut self) {
-        for t in &mut self.tasks {
-            if t.status.is_terminal() || t.status == TaskStatus::Pending {
-                t.read = true;
-            }
-        }
-        self.save();
-    }
-
-    pub fn unread_count(&self) -> usize {
-        self.tasks
-            .iter()
-            .filter(|t| !t.read && (t.status.is_terminal() || t.status == TaskStatus::Pending))
-            .count()
-    }
-
-    pub fn get_all(&self) -> &[Task] {
-        &self.tasks
-    }
-
-    pub fn remove_task(&mut self, id: &str) -> bool {
-        let len = self.tasks.len();
-        self.tasks.retain(|t| t.id != id);
-        if self.tasks.len() < len {
-            self.save();
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Remove terminal-state sessions (success/failed) older than `retention_hours`.
+    /// Remove terminal-state sessions older than `retention_hours`.
     /// Running/Pending sessions are never removed.
     /// Returns the number of sessions removed.
     pub fn cleanup_expired(&mut self, retention_hours: u32) -> usize {
         let cutoff = Utc::now() - chrono::Duration::hours(retention_hours as i64);
-        let before = self.tasks.len();
-        self.tasks.retain(|t| {
-            // Keep running/pending sessions always
-            if !t.status.is_terminal() {
+        let before = self.sessions.len();
+        self.sessions.retain(|s| {
+            if !s.status.is_terminal() {
                 return true;
             }
-            // Keep terminal sessions newer than cutoff
-            t.updated_at > cutoff
+            s.updated_at > cutoff
         });
-        let removed = before - self.tasks.len();
+        let removed = before - self.sessions.len();
         if removed > 0 {
             self.save();
         }
@@ -221,20 +179,19 @@ impl TaskStore {
     }
 
     /// Detect running sessions whose terminal_tty no longer exists (terminal closed).
-    /// Marks them as Failed with "Session lost" message.
+    /// Marks them as completed with "Session lost" message.
     /// Returns the number of sessions reaped.
     pub fn reap_stale_sessions(&mut self) -> usize {
         let mut reaped = 0;
-        for task in &mut self.tasks {
-            if task.status != TaskStatus::Running {
+        for session in &mut self.sessions {
+            if session.status != SessionStatus::Running {
                 continue;
             }
-            if let Some(ref tty) = task.terminal_tty {
+            if let Some(ref tty) = session.terminal_tty {
                 if !tty.is_empty() && !std::path::Path::new(tty).exists() {
-                    task.status = TaskStatus::Failed;
-                    task.message = "Session lost".into();
-                    task.read = false;
-                    task.updated_at = Utc::now();
+                    session.status = SessionStatus::Success;
+                    session.message = "Session lost".into();
+                    session.updated_at = Utc::now();
                     reaped += 1;
                 }
             }

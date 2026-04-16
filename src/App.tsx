@@ -3,7 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import PopupWindow from "./popup/PopupWindow";
-import NotificationPanel from "./panel/NotificationPanel";
+import SessionPanel from "./panel/SessionPanel";
 import SettingsWindow from "./settings/SettingsWindow";
 import { LocaleProvider } from "./i18n/context";
 import type { Locale } from "./i18n/strings";
@@ -31,7 +31,7 @@ function App() {
   if (label.startsWith("popup-")) {
     content = <PopupWindow />;
   } else if (label === "panel") {
-    content = <NotificationPanel />;
+    content = <SessionPanel />;
   } else if (label === "settings") {
     content = <SettingsWindow />;
   }

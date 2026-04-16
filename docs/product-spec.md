@@ -194,40 +194,36 @@ Poke Poke App (Tauri)
 
 当前代码实现中存在一些与上述产品定义不一致的地方：
 
-### 1. 状态模型偏差
+### ~~1. 状态模型偏差~~ ✅ 已修复
 
-| 产品定义 | 当前代码 | 差异 |
-|----------|----------|------|
-| 3 种状态：`pending` / `running` / `success` | 4 种状态：`Pending` / `Running` / `Success` / `Failed` | `Failed` 不在产品设计中，应合并到 `success`（会话结束） |
-
-需要修改：Cursor `stop(aborted)` 和 stale session 检测产生的 `Failed` 统一映射为 `success`。
+`Failed` 已移除，统一映射为 `success`。Cursor `stop(aborted)`、stale session 检测均已调整。
 
 ### 2. 全局开关缺失
 
 产品要求左下角有一个 Switch 控制整体启用/禁用，当前代码未实现。
 
-### 3. 会话列表排序
+### ~~3. 会话列表排序~~ ✅ 已符合
 
-产品要求按注册时间先后排列（先注册的在上），不做 `pending` 置顶优先展示。
+代码已按 `created_at` 升序排列（先注册的在上），与产品定义一致。
 
-### 4. 术语统一
+### ~~4. 术语统一~~ ✅ 已完成
 
-当前代码中混用 `Task` / `Notification` / `Session` 等概念，产品层面应统一为 **Session（会话）**。
+代码已统一使用 `Session`/`SessionStatus`/`SessionStore`。文件 `notifications.rs` → `sessions.rs`，`NotificationPanel` → `SessionPanel`，数据文件 `notifications.json` → `sessions.json`（含自动迁移）。外部 API 字段 `task_id` 保持不变（hook 合约）。
 
-### 5. 已读 / 未读逻辑偏差
+### ~~5. 已读 / 未读逻辑偏差~~ ✅ 已移除
 
-当前代码仍保留 `read`、`unread_count`、`mark_read`、`mark_all_read`、托盘未读 tooltip 等已读 / 未读体系；但当前产品设计不包含未读计数与标记已读能力。
+`read` 字段、`unread_count`、`mark_read`、`mark_all_read`、托盘未读 tooltip、相关 HTTP 路由和 Tauri 命令均已移除。
 
 ## 后续 TODO
 
-1. 移除 `failed` 状态，统一合并到 `success`；同步调整 Cursor `stop(aborted)`、stale session 检测与前端展示逻辑。
-2. 会话列表保持按注册时间先后排列（先注册的在上）；若实现偏离，需要及时修正代码。
-3. 提示面板不保留 timeout 相关产品设定，后续移除对应设置项与实现代码。
-4. 提示音在 `pending` 和 `success` 两种提示场景下都需要播放。
-5. 继续确认 Codex 是否存在可用于 `pending` 的 hook / notify 能力；如果有，需要补齐接入。
+1. ~~移除 `failed` 状态，统一合并到 `success`；同步调整 Cursor `stop(aborted)`、stale session 检测与前端展示逻辑。~~ ✅
+2. ~~会话列表保持按注册时间先后排列（先注册的在上）；若实现偏离，需要及时修正代码。~~ ✅
+3. ~~提示面板不保留 timeout 相关产品设定，后续移除对应设置项与实现代码。~~ ✅
+4. ~~提示音在 `pending` 和 `success` 两种提示场景下都需要播放。~~ ✅ 已确认：sound 在 `should_popup` 为 true 时播放，覆盖 `* → success` 和 `running → pending` 两种场景。
+5. ~~继续确认 Codex 是否存在可用于 `pending` 的 hook / notify 能力；如果有，需要补齐接入。~~ ✅ 已确认：Codex CLI 仅支持 `SessionStart`、`UserPromptSubmit`、`Stop` 三种事件，不具备 `Notification` 事件，无法触发 `pending` 状态。此为 Codex 平台限制，非 Poke Poke 可解决。
 6. 增加全局开关：禁用后不弹窗、不播音；该能力当前尚未实现。
 7. Cursor 的跳转/聚焦能力需要从 workspace 级提升到会话级。
-8. 移除已读 / 未读相关实现，包括 `read` 字段、`unread_count`、`mark_read`、`mark_all_read`、相关 HTTP / Tauri 命令，以及托盘未读 tooltip 更新逻辑。
+8. ~~移除已读 / 未读相关实现，包括 `read` 字段、`unread_count`、`mark_read`、`mark_all_read`、相关 HTTP / Tauri 命令，以及托盘未读 tooltip 更新逻辑。~~ ✅
 
 ---
 

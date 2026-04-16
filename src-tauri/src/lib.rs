@@ -1,13 +1,13 @@
 mod commands;
 mod http_server;
-mod notifications;
 mod popup;
+mod sessions;
 mod settings;
 mod shortcut;
 mod sound;
 mod tray;
 
-use notifications::TaskStore;
+use sessions::SessionStore;
 use settings::SettingsStore;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -23,8 +23,15 @@ pub fn run() {
         ))
         .setup(|app| {
             let data_dir = dirs_next().unwrap_or_else(|| std::path::PathBuf::from("."));
-            let store_path = data_dir.join("notifications.json");
-            let store = Arc::new(Mutex::new(TaskStore::load(store_path)));
+
+            // Migrate legacy data file name
+            let legacy_path = data_dir.join("notifications.json");
+            let store_path = data_dir.join("sessions.json");
+            if !store_path.exists() && legacy_path.exists() {
+                let _ = std::fs::rename(&legacy_path, &store_path);
+            }
+
+            let store = Arc::new(Mutex::new(SessionStore::load(store_path)));
             let popup_list = popup::create_popup_list();
 
             let settings_path = data_dir.join("settings.json");
@@ -66,13 +73,13 @@ pub fn run() {
                             let cleaned =
                                 cleanup_store.lock().unwrap().cleanup_expired(retention);
                             if cleaned > 0 {
-                                let _ = cleanup_app.emit("notifications-updated", ());
+                                let _ = cleanup_app.emit("sessions-updated", ());
                             }
                         }
                         // Stale session reaping
                         let reaped = cleanup_store.lock().unwrap().reap_stale_sessions();
                         if reaped > 0 {
-                            let _ = cleanup_app.emit("notifications-updated", ());
+                            let _ = cleanup_app.emit("sessions-updated", ());
                         }
                     }
                 });
@@ -81,15 +88,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::get_notifications,
-            commands::get_unread_count,
-            commands::get_notification_by_id,
-            commands::mark_notification_read,
-            commands::mark_all_read,
-            commands::remove_notification,
+            commands::get_sessions,
+            commands::get_session_by_id,
+            commands::remove_session,
             commands::close_popup_window,
-            commands::open_task_source,
-            commands::focus_task_terminal,
+            commands::open_session_source,
+            commands::focus_session_terminal,
             commands::check_cc_integration,
             commands::check_codex_integration,
             commands::check_cursor_integration,
@@ -103,8 +107,6 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building PokePoke")
         .run(|_app_handle, event| {
-            // Prevent the app from exiting when all windows are closed.
-            // This is a tray-icon app — it should keep running in the background.
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
                 api.prevent_exit();
             }

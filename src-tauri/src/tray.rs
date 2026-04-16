@@ -280,13 +280,3 @@ fn get_screen_size(app: &AppHandle) -> (f64, f64) {
     }
 }
 
-pub fn update_tray_icon(app: &AppHandle, unread_count: usize) {
-    if let Some(tray) = app.tray_by_id("main") {
-        let tooltip = if unread_count > 0 {
-            format!("Poke Poke - {} unread", unread_count)
-        } else {
-            "Poke Poke".to_string()
-        };
-        let _ = tray.set_tooltip(Some(&tooltip));
-    }
-}

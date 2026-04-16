@@ -1,4 +1,4 @@
-import type { TaskStatus } from "../types";
+import type { SessionStatus } from "../types";
 import "./source-icon.css";
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -43,7 +43,7 @@ const BODY: number[][] = [
 
 type Pixel = [number, number, string];
 
-function getExpression(status: TaskStatus, bodyColor: string): Pixel[] {
+function getExpression(status: SessionStatus, bodyColor: string): Pixel[] {
   const W = "#FFFFFF";
   const D = "#1a1a2e";
   const C = bodyColor;
@@ -73,18 +73,10 @@ function getExpression(status: TaskStatus, bodyColor: string): Pixel[] {
         [6,7,D], [7,7,C], [8,7,C], [9,7,D],    // mouth top: smile ends
         [6,8,C], [7,8,D], [8,8,D], [9,8,C],    // mouth bottom: smile curve
       ];
-    case "failed":
-      // Dead: X eyes, frown
-      return [
-        [3,4,D], [4,4,C], [3,5,C], [4,5,D],    // left eye: \ diagonal
-        [11,4,C],[12,4,D],[11,5,D],[12,5,C],    // right eye: / diagonal
-        [6,7,C], [7,7,D], [8,7,D], [9,7,C],    // mouth top: frown ends
-        [6,8,D], [7,8,C], [8,8,C], [9,8,D],    // mouth bottom: frown curve
-      ];
   }
 }
 
-function PixelMonster({ color, status }: { color: string; status: TaskStatus }) {
+function PixelMonster({ color, status }: { color: string; status: SessionStatus }) {
   // Lighter shade for cheek blush
   const blush = `${color}66`;
 
@@ -114,7 +106,7 @@ function PixelMonster({ color, status }: { color: string; status: TaskStatus }) 
 
 interface SourceIconProps {
   source: string | null;
-  status?: TaskStatus;
+  status?: SessionStatus;
   animate?: boolean;
   /** Unique seed (e.g. task_id) to generate a distinct color per session */
   colorSeed?: string;

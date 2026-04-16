@@ -51,25 +51,3 @@
   }
 }
 
-/* Failed: nervous shake loop */
-.source-icon.failed {
-  animation: monsterShake 1.2s ease-in-out infinite;
-}
-
-@keyframes monsterShake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-2px);
-  }
-  40% {
-    transform: translateX(2px);
-  }
-  60% {
-    transform: translateX(-1px);
-  }
-  80% {
-    transform: translateX(1px);
-  }
-}
