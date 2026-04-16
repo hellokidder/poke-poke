@@ -46,12 +46,12 @@ pub fn focus_session_terminal(
         }
     }
 
-    // For Cursor sessions, open Cursor.app with the workspace
+    // For Cursor sessions, use `cursor` CLI to focus the editor window
     if let Some(ref src) = source {
         if src == "cursor" {
             if let Some(ref path) = workspace_path {
                 if !path.is_empty() {
-                    let _ = Command::new("open").args(["-a", "Cursor", path]).output();
+                    focus_cursor_workspace(path);
                     return;
                 }
             }
@@ -87,12 +87,12 @@ pub fn open_session_source(
         }
     }
 
-    // For Cursor sessions, open Cursor.app with the workspace
+    // For Cursor sessions, use `cursor` CLI to focus the editor window
     if let Some(ref src) = source {
         if src == "cursor" {
             if let Some(ref path) = workspace_path {
                 if !path.is_empty() {
-                    let _ = Command::new("open").args(["-a", "Cursor", path]).output();
+                    focus_cursor_workspace(path);
                     return;
                 }
             }
@@ -181,6 +181,13 @@ end tell"#,
 
     let _ = Command::new("open").args(["-a", "Terminal"]).output();
     true
+}
+
+/// Focus a Cursor editor window for the given workspace path.
+/// Uses `cursor` CLI which reuses the existing window instead of
+/// opening the GUI composer dialog (which `open -a Cursor` tends to do).
+fn focus_cursor_workspace(path: &str) {
+    let _ = Command::new("cursor").arg(path).output();
 }
 
 fn run_applescript_bool(script: &str) -> bool {
