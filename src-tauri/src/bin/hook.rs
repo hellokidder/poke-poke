@@ -64,7 +64,14 @@ impl Source {
 fn detect_source(data: &Value) -> Source {
     if data.get("workspace_roots").is_some() || data.get("workspaceRoots").is_some() {
         Source::Cursor
-    } else if data.get("turn_id").is_some() {
+    } else if data.get("turn_id").is_some()
+        || data.get("stop_hook_active").is_some()
+        || data.get("model").is_some()
+        || matches!(
+            data.get("source").and_then(|v| v.as_str()),
+            Some("startup" | "resume" | "clear")
+        )
+    {
         Source::Codex
     } else {
         Source::ClaudeCode

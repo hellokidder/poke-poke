@@ -143,21 +143,12 @@ async fn handle_notify(
     };
 
     if should_popup {
-        // Skip if the user is already focused on this session's terminal
-        let already_focused = result
-            .task
-            .terminal_tty
-            .as_deref()
-            .is_some_and(|tty| !tty.is_empty() && popup::is_terminal_session_focused(tty));
-
-        if !already_focused {
-            let timeout = {
-                let s = state.settings_store.lock().unwrap();
-                s.settings.popup_timeout
-            };
-            popup::show_popup(&state.app, &result.task, &state.popup_list, timeout);
-            sound::play_alert_with_settings(&state.settings_store);
-        }
+        let timeout = {
+            let s = state.settings_store.lock().unwrap();
+            s.settings.popup_timeout
+        };
+        popup::show_popup(&state.app, &result.task, &state.popup_list, timeout);
+        sound::play_alert_with_settings(&state.settings_store);
     }
 
     let unread = state.store.lock().unwrap().unread_count();
