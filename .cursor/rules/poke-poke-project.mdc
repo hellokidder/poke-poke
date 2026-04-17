@@ -22,7 +22,8 @@ alwaysApply: true
 
 ## Cursor Hooks（与本仓库）
 
-- `.cursor/hooks.json`：在 **`stop`**（Agent 一轮跑完）与 **`sessionEnd`**（会话结束）时执行 `.cursor/hooks/runPokepokeNotify.sh` → `pokepokeCursorStop.py`，向 `127.0.0.1:9876`（再试 `9877`）`POST /notify`。
+- `.cursor/hooks.json`：在 **`sessionStart`**、**`beforeSubmitPrompt`**、**`stop`**（Agent 一轮跑完）、**`sessionEnd`**（会话结束）四个事件上执行 `~/.local/bin/poke-hook`（timeout 8s），由该二进制向 `127.0.0.1:9876`（再试 `9877`）`POST /notify`。
+- `poke-hook` 本体源码位于 `src-tauri/src/bin/hook.rs`，构建产物需要手动部署到 `~/.local/bin/poke-hook`。改完 `hook.rs` 必须重新构建并替换该二进制，否则 Cursor 端跑的还是旧版本。常用命令：`pnpm install:hook`（见 `package.json`）。
 - 必要条件：工作区 **已信任**；Cursor **Hooks 功能已开启**；PokePoke 必须用 **`npm run tauri dev`**（或安装版）运行（仅 `npm run dev` 无托盘也无 HTTP）。
 - 排查：Cursor 底部/输出里打开 **Hooks** 通道，看 `[pokepoke-hook]` 日志；若提示连不上 `/notify`，说明应用未起或端口被占用。
 
