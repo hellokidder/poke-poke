@@ -4,6 +4,57 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+#[cfg(target_os = "macos")]
+mod macos_panel {
+    //! 把 Tauri 创建出来的普通 NSWindow 转成 non-activating NSPanel，
+    //! 这样窗口显示时不会把 PokePoke 激活到前台、不抢用户的键盘焦点。
+    //!
+    //! 原因：Tauri v2 的 .focused(false) 在 macOS 上实际不生效
+    //! (tao 的 TaoWindow 硬编码 canBecomeKeyWindow = YES)。
+    //! 我们直接通过 objc2 设置 NSWindow 的 styleMask 和 collectionBehavior。
+
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    // AppKit 常量；objc2-app-kit 没导出这些 bitflag 的裸值，直接按 Apple 头文件抄。
+    const NS_WINDOW_STYLE_MASK_NONACTIVATING_PANEL: u64 = 1 << 7;
+    // NSWindowCollectionBehavior
+    const NS_WINDOW_COLLECTION_BEHAVIOR_CAN_JOIN_ALL_SPACES: u64 = 1 << 0;
+    const NS_WINDOW_COLLECTION_BEHAVIOR_STATIONARY: u64 = 1 << 4;
+    const NS_WINDOW_COLLECTION_BEHAVIOR_FULL_SCREEN_AUXILIARY: u64 = 1 << 8;
+
+    /// 将指定 NSWindow 配置为 non-activating 面板并前置展示。
+    /// 必须在主线程调用。
+    ///
+    /// # Safety
+    /// `ns_window` 必须是有效的 NSWindow 指针（由 Tauri `ns_window()` 返回）。
+    pub unsafe fn make_non_activating_panel(ns_window: *mut std::ffi::c_void) {
+        if ns_window.is_null() {
+            return;
+        }
+        let window: &AnyObject = &*(ns_window as *mut AnyObject);
+
+        // 追加 NonactivatingPanel 位，让 NSWindow 表现得像 NSPanel：
+        // 不会成为 key window / main window，因而不会激活所属 app。
+        let current_mask: u64 = msg_send![window, styleMask];
+        let new_mask = current_mask | NS_WINDOW_STYLE_MASK_NONACTIVATING_PANEL;
+        let _: () = msg_send![window, setStyleMask: new_mask];
+
+        // 浮动：所有 Space 可见 + 全屏下也显示 + 不随 Space 切换（stationary）
+        let behavior = NS_WINDOW_COLLECTION_BEHAVIOR_CAN_JOIN_ALL_SPACES
+            | NS_WINDOW_COLLECTION_BEHAVIOR_STATIONARY
+            | NS_WINDOW_COLLECTION_BEHAVIOR_FULL_SCREEN_AUXILIARY;
+        let _: () = msg_send![window, setCollectionBehavior: behavior];
+
+        // 不让窗口变成 main/key window（某些情况下点击也不会）
+        let _: () = msg_send![window, setHidesOnDeactivate: false];
+
+        // 用 orderFrontRegardless 取代 makeKeyAndOrderFront：
+        // 显示窗口但不抢 key 状态，也不激活 app。
+        let _: () = msg_send![window, orderFrontRegardless];
+    }
+}
+
 const POPUP_WIDTH: f64 = 360.0;
 const POPUP_HEIGHT: f64 = 150.0;
 const POPUP_MARGIN: f64 = 12.0;
@@ -20,6 +71,8 @@ pub fn show_popup(app: &AppHandle, session: &Session, popup_list: &PopupList) {
 
     let (x, y) = calculate_position(app, popup_list);
 
+    // 注意：这里 visible(false) + 构建后手动 order-front-regardless。
+    // 如果让 Tauri 自己 show，会调用 makeKeyAndOrderFront 抢焦点。
     let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(POPUP_WIDTH, POPUP_HEIGHT)
@@ -31,12 +84,42 @@ pub fn show_popup(app: &AppHandle, session: &Session, popup_list: &PopupList) {
         .resizable(false)
         .transparent(true)
         .shadow(false)
-        .visible(true)
+        .visible(false)
         .accept_first_mouse(true)
         .build();
 
     match window {
-        Ok(_) => {
+        Ok(win) => {
+            // macOS：把这个普通 NSWindow 转成 non-activating NSPanel 再显示，
+            // 彻底避免弹窗激活 app、打断用户输入。
+            // 注意：AppKit 调用（setStyleMask / orderFrontRegardless）必须在主线程，
+            // 否则会被静默忽略，表现就是"弹窗不出现"。
+            // show_popup 被 axum handler 调用时在 tokio worker 线程上，必须 dispatch。
+            #[cfg(target_os = "macos")]
+            {
+                let win_for_main = win.clone();
+                let win_fallback = win.clone();
+                let dispatched = win
+                    .run_on_main_thread(move || {
+                        if let Ok(ns_window) = win_for_main.ns_window() {
+                            unsafe {
+                                macos_panel::make_non_activating_panel(ns_window);
+                            }
+                        } else {
+                            let _ = win_for_main.show();
+                        }
+                    })
+                    .is_ok();
+                if !dispatched {
+                    // dispatch 失败时至少让窗口显示出来，避免"弹窗丢失"
+                    let _ = win_fallback.show();
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = win.show();
+            }
+
             if let Ok(mut list) = popup_list.lock() {
                 list.push(label);
             }

@@ -37,3 +37,10 @@ tower-http = { version = "0.6", features = ["cors"] }
 ureq = "2"
 toml_edit = "0.22"
 
+# 仅 macOS：通过 objc2 给 popup 的 NSWindow 设 NonactivatingPanel styleMask，
+# 解决 Tauri v2 .focused(false) 在 macOS 上不生效、popup 抢焦点的问题。
+# 只用到了裸 msg_send!，所以这里只需 objc2 本体；
+# 版本与 Tauri 自身使用的传递依赖一致，避免引入多份同名 crate。
+[target."cfg(target_os = \"macos\")".dependencies]
+objc2 = "0.6"
+

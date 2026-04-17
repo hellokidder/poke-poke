@@ -23,6 +23,12 @@ pub fn run() {
             None,
         ))
         .setup(|app| {
+            // macOS 的 "菜单栏工具" 模式通过 Info.plist 的 LSUIElement=true 声明
+            // （见 tauri.conf.json / 打包产物的 Info.plist）。这样 NSApp 从启动
+            // 之初就不是 Regular app，创建窗口时不会激活本进程、不抢用户输入焦点。
+            // 这里不再运行时调用 set_activation_policy——实测会导致 dev 下 NSApp
+            // 在 finishLaunching 时立刻退出。
+
             let data_dir = dirs_next().unwrap_or_else(|| std::path::PathBuf::from("."));
 
             // Migrate legacy data file name
@@ -193,6 +199,15 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building PokePoke")
         .run(|_app_handle, event| {
+            // NSApp finishLaunching 之后才切换激活策略。
+            // 放在这个时机的原因：
+            //   - dev 模式下裸二进制不读 Info.plist，LSUIElement 只在打包产物生效
+            //   - 直接在 setup 里同步切会早于 finishLaunching，导致 NSApp 启动即退出
+            //   - Ready 事件保证 run loop 已稳定进入
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Ready = event {
+                let _ = _app_handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
                 api.prevent_exit();
             }

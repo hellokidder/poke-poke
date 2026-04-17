@@ -230,6 +230,10 @@ const SETTINGS_H: f64 = 660.0;
 /// Open a standalone settings window (singleton). If already open, focus it.
 pub fn open_settings_window(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("settings") {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+        }
         let _ = win.show();
         let _ = win.set_focus();
         return;
@@ -244,6 +248,10 @@ pub fn toggle_settings_window(app: &AppHandle) {
         if win.is_visible().unwrap_or(false) {
             let _ = win.destroy();
         } else {
+            #[cfg(target_os = "macos")]
+            {
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+            }
             let _ = win.show();
             let _ = win.set_focus();
         }
@@ -257,7 +265,14 @@ fn create_settings_window(app: &AppHandle) {
     let x = (screen_w - SETTINGS_W) / 2.0;
     let y = (screen_h - SETTINGS_H) / 2.0;
 
-    let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("index.html".into()))
+    // Settings 是需要前台交互的窗口：临时切到 Regular 让它能正常获得焦点、
+    // 出现在 Dock / Cmd+Tab 里；窗口关闭时再切回 Accessory，避免 popup 抢焦点。
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+    }
+
+    let built = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(SETTINGS_W, SETTINGS_H)
         .position(x, y)
@@ -268,6 +283,30 @@ fn create_settings_window(app: &AppHandle) {
         .shadow(true)
         .transparent(true)
         .build();
+
+    if let Ok(window) = built {
+        let _ = window.set_focus();
+        let app_handle = app.clone();
+        window.on_window_event(move |event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = app_handle
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = &app_handle;
+                }
+            }
+        });
+    } else {
+        // 构建失败也要把激活策略还原
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+        }
+    }
 }
 
 fn get_screen_size(app: &AppHandle) -> (f64, f64) {
