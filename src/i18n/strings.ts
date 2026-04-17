@@ -12,6 +12,7 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.running": "运行中",
     "status.pending": "等待中",
     "status.success": "已完成",
+    "status.failure": "已失败",
 
     // Panel
     "panel.active_count": "{n} 个活跃",
@@ -50,6 +51,7 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.running": "Running",
     "status.pending": "Pending",
     "status.success": "Completed",
+    "status.failure": "Failed",
 
     // Panel
     "panel.active_count": "{n} active",

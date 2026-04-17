@@ -28,6 +28,7 @@ function StatusDot({ status }: { status: SessionStatus }) {
     running: { color: "#4ade80", label: t("status.running"), animate: true },
     pending: { color: "#facc15", label: t("status.pending"), animate: true },
     success: { color: "rgba(255,255,255,0.25)", label: t("status.success"), animate: false },
+    failure: { color: "#f87171", label: t("status.failure"), animate: false },
   };
   const c = config[status];
   return (

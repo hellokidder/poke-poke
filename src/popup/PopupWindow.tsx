@@ -53,7 +53,11 @@ export default function PopupWindow() {
     return <div className="popup-container" />;
   }
 
-  const statusClass = session.status === "success" ? "success" : session.status === "pending" ? "pending" : "";
+  const statusClass =
+    session.status === "success" ? "success"
+    : session.status === "failure" ? "failure"
+    : session.status === "pending" ? "pending"
+    : "";
   const canFocus = !!(session.terminal_tty || session.workspace_path);
 
   return (

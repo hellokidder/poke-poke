@@ -18,11 +18,15 @@ pub enum SessionStatus {
     Pending,
     Running,
     Success,
+    // 异常终态：hook 事件上报 API 错误、任务 exit code ≠ 0、hook 本身异常等。
+    // 和 Success 一样被 is_terminal() 视为终态，会被 24h TTL 清理、popup
+    // 展示、session 列表置灰。区别只在视觉（红色告警）和文案。
+    Failure,
 }
 
 impl SessionStatus {
     pub fn is_terminal(&self) -> bool {
-        matches!(self, SessionStatus::Success)
+        matches!(self, SessionStatus::Success | SessionStatus::Failure)
     }
 }
 

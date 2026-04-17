@@ -85,9 +85,14 @@ async fn handle_notify(
         _ => Priority::Normal,
     };
 
-    let status = match req.status.as_deref() {
-        Some("running") => SessionStatus::Running,
-        Some("success") | Some("failed") => SessionStatus::Success,
+    // 允许的 status 字符串（大小写不敏感）：
+    //   running / success / failure(别名 failed) / pending
+    // 注意：历史上 "failed" 被错误地归到 Success——这里修正成 Failure。
+    // 没有显式传 status 时默认 Pending。
+    let status = match req.status.as_deref().map(|s| s.to_ascii_lowercase()) {
+        Some(ref s) if s == "running" => SessionStatus::Running,
+        Some(ref s) if s == "success" => SessionStatus::Success,
+        Some(ref s) if s == "failure" || s == "failed" => SessionStatus::Failure,
         _ => SessionStatus::Pending,
     };
 
