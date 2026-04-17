@@ -27,8 +27,10 @@ function StatusDot({ status }: { status: SessionStatus }) {
   const config: Record<SessionStatus, { color: string; label: string; animate: boolean }> = {
     running: { color: "#4ade80", label: t("status.running"), animate: true },
     pending: { color: "#facc15", label: t("status.pending"), animate: true },
-    success: { color: "rgba(255,255,255,0.25)", label: t("status.success"), animate: false },
-    failure: { color: "#f87171", label: t("status.failure"), animate: false },
+    // Task C：Idle 是"在线但空闲"，淡蓝传达这种"静止但活着"的语义，
+    // 原来的灰白容易被误读成"已归档"，和新语义冲突。
+    idle: { color: "#60a5fa", label: t("status.idle"), animate: false },
+    last_failed: { color: "#f87171", label: t("status.last_failed"), animate: false },
   };
   const c = config[status];
   return (

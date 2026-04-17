@@ -125,15 +125,15 @@ function getExpression(status: SessionStatus): Pixel[] {
         // Smile
         [6, 11, D], [7, 12, D], [8, 12, D], [9, 12, D], [10, 11, D],
       ];
-    case "success":
+    case "idle":
       return [
-        // ^^ happy eyes: ink on top row only
+        // ^^ happy eyes：上排像素着色，弯弯眯眯的。"空闲但在线"的视觉语义
         [5, 7, D], [6, 7, D],
         [11, 7, D], [12, 7, D],
         // Smile
         [6, 11, D], [7, 12, D], [8, 12, D], [9, 12, D], [10, 11, D],
       ];
-    case "failure":
+    case "last_failed":
       return [
         // >< 闭眼：每只眼取 2×2 的对角两个像素，像斜线
         [5, 7, D], [6, 8, D],

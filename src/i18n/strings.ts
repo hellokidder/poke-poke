@@ -11,8 +11,8 @@ export const strings: Record<Locale, Record<string, string>> = {
     // Status
     "status.running": "运行中",
     "status.pending": "等待中",
-    "status.success": "已完成",
-    "status.failure": "已失败",
+    "status.idle": "空闲中",
+    "status.last_failed": "上一轮出错",
 
     // StopFailure reason（Claude Code 一轮因 API 错误终止时的具体原因）
     "stop_failure.rate_limit": "API 错误 · 被限速",
@@ -59,8 +59,8 @@ export const strings: Record<Locale, Record<string, string>> = {
     // Status
     "status.running": "Running",
     "status.pending": "Pending",
-    "status.success": "Completed",
-    "status.failure": "Failed",
+    "status.idle": "Idle",
+    "status.last_failed": "Last turn failed",
 
     // StopFailure reason (Claude Code API error detail)
     "stop_failure.rate_limit": "API error · rate limited",

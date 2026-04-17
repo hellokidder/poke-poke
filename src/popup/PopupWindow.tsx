@@ -54,16 +54,16 @@ export default function PopupWindow() {
   }
 
   const statusClass =
-    session.status === "success" ? "success"
-    : session.status === "failure" ? "failure"
+    session.status === "idle" ? "idle"
+    : session.status === "last_failed" ? "last_failed"
     : session.status === "pending" ? "pending"
     : "";
   const canFocus = !!(session.terminal_tty || session.workspace_path);
 
-  // Failure 状态下优先用 failure_reason 做本地化展示；
+  // LastFailed 状态下优先用 failure_reason 做本地化展示；
   // reason 为空或不在白名单时统一回退到 unknown，避免直接把 "stop_failure.xxx" 键名露给用户。
   const displayMessage = (() => {
-    if (session.status !== "failure") return session.message;
+    if (session.status !== "last_failed") return session.message;
     const KNOWN_REASONS = [
       "rate_limit",
       "server_error",

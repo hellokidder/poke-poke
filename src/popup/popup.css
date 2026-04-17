@@ -29,15 +29,15 @@
   pointer-events: none;
 }
 
-.popup-container.success .popup-glow {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.15), rgba(74, 222, 128, 0.05));
+.popup-container.idle .popup-glow {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(96, 165, 250, 0.15), rgba(96, 165, 250, 0.05));
 }
 
 .popup-container.pending .popup-glow {
   background: linear-gradient(135deg, rgba(255, 180, 50, 0.4), rgba(255, 150, 30, 0.2), rgba(255, 180, 50, 0.1));
 }
 
-.popup-container.failure .popup-glow {
+.popup-container.last_failed .popup-glow {
   background: linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(239, 68, 68, 0.2), rgba(248, 113, 113, 0.1));
 }
 
