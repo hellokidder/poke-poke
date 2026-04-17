@@ -89,7 +89,7 @@ Session 在以下时机被注册（创建/更新）到列表：
 - **注册** → Agent hook 事件到达时创建
 - **完成** → Session 进入 `success` 状态后，只要关联的 Agent session 仍然存活（终端进程在、窗口未关闭），就保留在列表中（灰色弱化显示）
 - **移除** → 当关联的 Agent session 被关闭时（终端关闭、Agent 进程退出、收到 SessionEnd 事件），立即从列表中移除
-- **兜底清理** → 对于无法检测到关闭事件的异常残留 Session（如进程崩溃未发送关闭事件），通过保留时间 TTL 自动清理（默认 24 小时，可在设置中调整）
+- **兜底清理** → 对于无法检测到关闭事件的异常残留 Session（如进程崩溃未发送关闭事件），通过保留时间 TTL 自动清理（固定 24 小时）
 
 ### 排序规则
 
@@ -108,7 +108,7 @@ Session 在以下时机被注册（创建/更新）到列表：
 | 设置项 | 说明 | 选项 |
 |--------|------|------|
 | **提示音** | `pending` / `success` 状态触发时播放的系统提示音 | 系统声音列表 / 静音 |
-| **会话保留（兜底）** | 无法检测到关闭事件的异常残留 Session 的最大保留时间 | 1小时 / 24小时 / 7天 / 永不清理 |
+| ~~**会话保留（兜底）**~~ | ~~无法检测到关闭事件的异常残留 Session 的最大保留时间~~ | ~~1小时 / 24小时 / 7天 / 永不清理~~ ✅ 已移除，TTL 固定 24h |
 | **语言** | 界面语言 | 中文 / English |
 | **开机自启** | 系统登录时自动启动 Poke Poke | 开 / 关 |
 | **全局快捷键** | 打开设置面板的键盘快捷键 | 自定义组合键 |
@@ -180,7 +180,7 @@ poke-hook (Rust binary)
 Poke Poke App (Tauri)
     ├── HTTP Server (Axum, port 9876)
     │     └── Upsert Session → Store
-    ├── Notification Store (~/.pokepoke/notifications.json)
+    ├── Session Store (~/.pokepoke/sessions.json)
     ├── Settings Store (~/.pokepoke/settings.json)
     ├── Tray Icon (菜单栏常驻)
     ├── Panel Window (会话列表)

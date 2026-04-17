@@ -85,8 +85,8 @@ Poke Poke 这个仓库很适合按模块划边界：
   - 负责外部 hook 协议、安装、检查、卸载
 - `src-tauri/src/http_server.rs`
   - 负责事件入口与状态流转
-- `src-tauri/src/notifications.rs`
-  - 负责 session/task 状态存储
+- `src-tauri/src/sessions.rs`
+  - 负责 session 状态存储
 - `src/panel/*`
   - 负责 panel UI
 - `src/popup/*`
@@ -375,7 +375,7 @@ Agent 很容易觉得"顺手整理一下代码结构比较好"，但如果契约
 
 对这个项目来说，最值得优先保护的就是：
 
-- `notifications.rs`
+- `sessions.rs`
 - `http_server.rs`
 - `hook.rs`
 
