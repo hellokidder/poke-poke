@@ -12,6 +12,7 @@ CC / Codex CLI / Cursor 完整 hook 事件列表 + 兼容性对比，用于 Poke
 | PostToolUse | 调用工具后 | 否 | 工具执行结果 |
 | Notification | CC 发通知 | 否 | 如等待用户输入、权限确认 |
 | Stop | 每轮对话结束 | 否 | stop_reason |
+| **StopFailure** | **API 错误导致对话结束** | **否(fire-and-forget)** | **matcher: `rate_limit` / `server_error` / `authentication_failed` / `billing_error` / `invalid_request` / `max_output_tokens` / `unknown`。output 和 exit code 被忽略** |
 | SubagentStop | 子代理完成 | 否 | Agent 工具派出的子代理 |
 
 ## Codex CLI Hook Events
@@ -83,6 +84,7 @@ codex --enable codex_hooks
 |-----------|---------|-----------|------------|
 | 注册/running | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
 | pending(等待用户) | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应(GUI 自带可视化) |
+| pending(API 报错) | **StopFailure**（P1-C 待接入） | 无对应 | 无对应 |
 | success(轮次完成) | Stop | Stop | stop |
 
 **注意：**

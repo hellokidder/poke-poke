@@ -389,6 +389,28 @@ fn is_cursor_process_running() -> bool {
 > - popup 抑制粒度：app 级（frontmost == Cursor 即抑制）
 > - 触发宿主元数据分层的条件：出现"一个 Agent 同时运行在终端和 GUI"的真实场景
 
+### P1-C：CC `StopFailure` 事件接入
+
+**背景**：CC 支持 `StopFailure` hook 事件，当一轮对话因 API 错误结束时触发（fire-and-forget，output 和 exit code 被忽略）。当前 Poke Poke 未接入此事件，CC 遇到网关报错/限速时用户无感知。
+
+**matcher 值（错误类型）**：`rate_limit`、`authentication_failed`、`billing_error`、`invalid_request`、`server_error`、`max_output_tokens`、`unknown`
+
+**映射方案**：
+
+| StopFailure 错误类型 | Poke Poke 状态 | popup 行为 |
+|---|---|---|
+| `rate_limit` | `pending` | 提示"被限速，需等待" |
+| `server_error` | `pending` | 提示"服务端错误" |
+| `authentication_failed` | `pending` | 提示"认证失败" |
+| 其他 | `pending` | 通用 API 错误提示 |
+
+**文件**：
+- `src-tauri/src/bin/hook.rs`：CC hook 配置注册 `StopFailure` 事件
+- `src-tauri/src/http_server.rs`：`/notify` 处理 `StopFailure` 类型事件，映射为 `pending` + 错误信息
+- `src/i18n/strings.ts`：新增错误提示文案
+
+**改动范围**：小。hook binary 加事件映射 + http_server 加处理分支 + 前端加文案。
+
 ---
 
 ## 五、P2 及延后
@@ -416,3 +438,6 @@ fn is_cursor_process_running() -> bool {
 | `src-tauri/src/popup.rs` | Cursor frontmost 抑制、Warp/Ghostty 粗粒度兜底 | P1-B |
 | `src-tauri/src/lib.rs` | `is_alive()` 按 source 分发、Cursor 进程探活 | P1-B |
 | `docs/session-list-architecture.md` | 声明 Cursor 能力边界 | P1-B |
+| `src-tauri/src/bin/hook.rs` | CC hook 注册 `StopFailure` 事件 | P1-C |
+| `src-tauri/src/http_server.rs` | 处理 `StopFailure` 映射为 `pending` + 错误信息 | P1-C |
+| `src/i18n/strings.ts` | API 错误提示文案 | P1-C |
