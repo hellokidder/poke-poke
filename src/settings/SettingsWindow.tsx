@@ -9,7 +9,6 @@ interface Settings {
   alert_sound: string;
   locale: string;
   auto_start: boolean;
-  session_retention_hours: number;
 }
 
 const MOD_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
@@ -79,13 +78,6 @@ function formatShortcut(s: string): string {
     .replace(/Shift/g, "\u21E7")
     .replace(/\+/g, " ");
 }
-
-const RETENTION_OPTIONS = [
-  { value: 1, labelKey: "settings.hours", n: 1 },
-  { value: 24, labelKey: "settings.hours", n: 24 },
-  { value: 168, labelKey: "settings.days", n: 7 },
-  { value: 0, labelKey: "settings.forever", n: 0 },
-];
 
 export default function SettingsWindow() {
   const t = useT();
@@ -241,23 +233,6 @@ export default function SettingsWindow() {
                 {t("settings.preview")}
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Session retention */}
-        <div className="sw-section">
-          <div className="sw-label">{t("settings.retention")}</div>
-          <div className="sw-desc">{t("settings.retention_desc")}</div>
-          <div className="sw-radio-group">
-            {RETENTION_OPTIONS.map((opt) => (
-              <div
-                key={opt.value}
-                className={`sw-radio-option ${settings.session_retention_hours === opt.value ? "active" : ""}`}
-                onClick={() => saveField("session_retention_hours", opt.value)}
-              >
-                {opt.value === 0 ? t("settings.forever") : t(opt.labelKey, { n: opt.n })}
-              </div>
-            ))}
           </div>
         </div>
 

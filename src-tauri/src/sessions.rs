@@ -177,28 +177,4 @@ impl SessionStore {
         }
         removed
     }
-
-    /// Detect running sessions whose terminal_tty no longer exists (terminal closed).
-    /// Marks them as completed with "Session lost" message.
-    /// Returns the number of sessions reaped.
-    pub fn reap_stale_sessions(&mut self) -> usize {
-        let mut reaped = 0;
-        for session in &mut self.sessions {
-            if session.status != SessionStatus::Running {
-                continue;
-            }
-            if let Some(ref tty) = session.terminal_tty {
-                if !tty.is_empty() && !std::path::Path::new(tty).exists() {
-                    session.status = SessionStatus::Success;
-                    session.message = "Session lost".into();
-                    session.updated_at = Utc::now();
-                    reaped += 1;
-                }
-            }
-        }
-        if reaped > 0 {
-            self.save();
-        }
-        reaped
-    }
 }

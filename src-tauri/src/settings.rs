@@ -19,10 +19,6 @@ pub struct Settings {
     /// Launch on macOS login
     #[serde(default)]
     pub auto_start: bool,
-
-    /// Session retention in hours. 0 = keep forever.
-    #[serde(default = "default_retention")]
-    pub session_retention_hours: u32,
 }
 
 fn default_sound() -> String {
@@ -33,10 +29,6 @@ fn default_locale() -> String {
     "zh".into()
 }
 
-fn default_retention() -> u32 {
-    24
-}
-
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -44,7 +36,6 @@ impl Default for Settings {
             alert_sound: default_sound(),
             locale: default_locale(),
             auto_start: false,
-            session_retention_hours: default_retention(),
         }
     }
 }

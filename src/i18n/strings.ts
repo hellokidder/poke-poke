@@ -38,11 +38,6 @@ export const strings: Record<Locale, Record<string, string>> = {
     "settings.click_to_set": "点击设置",
     "settings.saved": "已保存",
     "settings.preview": "试听",
-    "settings.retention": "会话保留",
-    "settings.retention_desc": "已完成的会话保留时长，超时自动清理",
-    "settings.hours": "{n} 小时",
-    "settings.days": "{n} 天",
-    "settings.forever": "永久",
   },
   en: {
     // Time
@@ -81,10 +76,5 @@ export const strings: Record<Locale, Record<string, string>> = {
     "settings.click_to_set": "Click to set",
     "settings.saved": "Saved",
     "settings.preview": "Preview",
-    "settings.retention": "Session Retention",
-    "settings.retention_desc": "How long completed sessions are kept before cleanup",
-    "settings.hours": "{n}h",
-    "settings.days": "{n}d",
-    "settings.forever": "Forever",
   },
 };
