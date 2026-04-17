@@ -2,6 +2,15 @@
 
 > 基于 CC / Codex / OpenCode 三方讨论汇总的最终执行方案。讨论已收敛并归档，结论反映在本文档和 `session-list-architecture.md` 正文中。
 
+> ⚠️ **Task C 覆盖通知**（2026-04-17）：本文档的 P0 和 P1-B B3 已被 `docs/tasks/taskC-session-lifecycle.md` **整体重构**。核心变化：
+> - `SessionStatus` 重命名为 `Running` / `Pending` / `Idle` / `LastFailed`，**不再有终态概念**——Idle/LastFailed 只是"agent 活着、上一轮已结束"。
+> - 删除 24h TTL 兜底清理（`cleanup_expired` / `is_terminal`），session 唯一回收路径是宿主探活失败。
+> - 探活线程覆盖所有 session 状态（不再按状态过滤）。
+> - 探活策略严格按 source 分层：CLI agent 用 `pgrep -t`，Cursor 用 `pgrep -x Cursor`，识别不出 source 的直接判死（"宁可误清也不留僵尸"）。
+> - 启动时做一次性全量探活 reap，清理老数据里宿主已死的 session。
+>
+> 下文中凡是标注 ✅ 已完成、但涉及"Success 终态" / "TTL" / "cleanup_expired" / "is_terminal"的实现细节，都应以 Task C 为准。保留原文作为决策演进记录。
+
 ---
 
 ## 一、当前问题
@@ -353,9 +362,11 @@ fn is_known_terminal_frontmost() -> bool {
 }
 ```
 
-#### B3：Cursor 进程级探活
+#### B3：Cursor 进程级探活 ✅（已由 Task C 合并实现）
 
-**文件**：`src-tauri/src/lib.rs`（巡检线程的 `is_alive()` 判断）
+**文件**：`src-tauri/src/lib.rs`（巡检线程的 `is_session_alive()` 判断）
+
+**状态**：Task C 的决策 4 已把 pgrep 分层探活（含 Cursor）整体落地，本小节仅作历史参考。实际代码以 `is_session_alive` / `probe_cursor_alive` 为准。
 
 ```rust
 fn is_alive(session: &Session) -> bool {
@@ -399,11 +410,11 @@ fn is_cursor_process_running() -> bool {
 
 | StopFailure 错误类型 | Poke Poke 状态 | 展示 |
 |---|---|---|
-| 所有 matcher | `failure`（终态） | popup 红色 + 前端按 `failure_reason` 做 i18n，zh/en 各一套文案 |
+| 所有 matcher | `last_failed`（Task C 后的命名，原 `failure`） | popup 红色 + 前端按 `failure_reason` 做 i18n，zh/en 各一套文案 |
 
-**与原方案的差异**：原规划映射到 `pending`，实际落地后改为新增的 `failure` 终态（Task A）。理由：StopFailure 是"这一轮任务已终止"信号，pending 的语义是"等待用户交互"，混用会让 reap 探活、popup 触发规则变脏。
+**与原方案的差异**：原规划映射到 `pending`，Task A 改为新增 `Failure` 终态；Task C 再把 `Failure` 改名为 `LastFailed` 并剥离"终态"语义——它现在表示"agent 活着但上一轮失败"。理由：StopFailure 是"这一轮任务已终止"信号，pending 的语义是"等待用户交互"，混用会让探活、popup 触发规则变脏。
 
-**数据结构**：`Session` 新增 `failure_reason: Option<String>` 字段（serde_default 向下兼容），仅 Failure 状态下携带；状态转出 Failure 时自动清空。
+**数据结构**：`Session` 新增 `failure_reason: Option<String>` 字段（serde_default 向下兼容），仅 `LastFailed` 状态下携带；状态转出 `LastFailed` 时自动清空。
 
 **文件改动**：
 - `src-tauri/src/bin/hook.rs`：`CC_HOOK_EVENTS` 加 `"StopFailure"`，新增 `handle_stop_failure()`

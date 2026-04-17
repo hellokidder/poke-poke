@@ -36,7 +36,7 @@ struct NotifyRequest {
     terminal_tty: Option<String>,
     #[serde(default)]
     workspace_path: Option<String>,
-    // 配合 status=failure 使用；其他状态会被 upsert_session 忽略。
+    // 配合 status=last_failed 使用；其他状态会被 upsert_session 忽略。
     #[serde(default)]
     failure_reason: Option<String>,
 }
@@ -89,13 +89,15 @@ async fn handle_notify(
     };
 
     // 允许的 status 字符串（大小写不敏感）：
-    //   running / success / failure(别名 failed) / pending
-    // 注意：历史上 "failed" 被错误地归到 Success——这里修正成 Failure。
+    //   running / pending / idle / last_failed
+    // 兼容老字符串：success → idle，failure/failed → last_failed
     // 没有显式传 status 时默认 Pending。
     let status = match req.status.as_deref().map(|s| s.to_ascii_lowercase()) {
         Some(ref s) if s == "running" => SessionStatus::Running,
-        Some(ref s) if s == "success" => SessionStatus::Success,
-        Some(ref s) if s == "failure" || s == "failed" => SessionStatus::Failure,
+        Some(ref s) if s == "idle" || s == "success" => SessionStatus::Idle,
+        Some(ref s) if s == "last_failed" || s == "failure" || s == "failed" => {
+            SessionStatus::LastFailed
+        }
         _ => SessionStatus::Pending,
     };
 
@@ -116,35 +118,41 @@ async fn handle_notify(
 
     let _ = state.app.emit("sessions-updated", ());
 
-    // Session-based popup dismiss: when a session resumes (user interacted),
-    // close the existing popup for that session.
-    // pending → running = user approved permission prompt
-    // terminal → running = user started new prompt after completion
+    // popup 关闭：用户重新发起了一轮（状态切回 Running），把这条 session 上
+    // 残留的 popup 关掉。触发条件是"上一轮 stage-ending 状态 → Running"：
+    //   Idle / LastFailed / Pending → Running
+    // 语义：上一轮结束后弹的 popup 已经达成提醒使命，新一轮开始时顺手收掉。
     let should_close_popup = !result.is_new
         && result.session.status == SessionStatus::Running
-        && result
-            .prev_status
-            .as_ref()
-            .is_some_and(|prev| prev.is_terminal() || *prev == SessionStatus::Pending);
+        && result.prev_status.as_ref().is_some_and(|prev| {
+            matches!(
+                prev,
+                SessionStatus::Idle | SessionStatus::LastFailed | SessionStatus::Pending
+            )
+        });
 
     if should_close_popup {
         popup::close_popup(&state.app, &result.session.id, &state.popup_list);
     }
 
-    // Popup when status transitions TO a terminal state, or running → pending
+    // popup 触发：进入"阶段结束"状态（Idle / LastFailed）或 Pending 时弹。
+    // 注意 Idle / LastFailed 在 Task C 后不再是"终态"，但它们仍是
+    // "一轮 agent 工作的结束点"，该提醒用户的场景没变。
     let should_popup = {
-        let is_terminal_transition = result.session.status.is_terminal()
-            && match &result.prev_status {
-                Some(prev) => prev != &result.session.status,
-                None => true,
-            };
+        let is_stage_end_transition = matches!(
+            result.session.status,
+            SessionStatus::Idle | SessionStatus::LastFailed
+        ) && match &result.prev_status {
+            Some(prev) => prev != &result.session.status,
+            None => true,
+        };
         let is_pending_transition = result.session.status == SessionStatus::Pending
             && match &result.prev_status {
                 Some(SessionStatus::Running) => true,
                 None => true,
                 _ => false,
             };
-        is_terminal_transition || is_pending_transition
+        is_stage_end_transition || is_pending_transition
     };
 
     if should_popup {

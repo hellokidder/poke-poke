@@ -7,7 +7,7 @@ mod shortcut;
 mod sound;
 mod tray;
 
-use sessions::{SessionStatus, SessionStore};
+use sessions::{Session, SessionStore};
 use settings::SettingsStore;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -66,9 +66,34 @@ pub fn run() {
                 http_server::start(app_handle, store_clone, popup_clone, settings_clone).await;
             });
 
-            // High-frequency liveness probe thread: every 5s
-            // Checks Running + Pending sessions; removes those whose host has disappeared
-            // after 2 consecutive missed probes (grace period).
+            // 启动时一次性全量探活：Task C 的新语义下 session = 活着的 agent。
+            // 老版本（含 Task A/B）遗留的 Idle/LastFailed session 宿主大概率已死；
+            // 等第一次探活循环还要 5s，用户看到面板瞬间"积攒历史"体验不好，
+            // 这里在 setup 里同步跑一次，只清理"能 100% 确认宿主已死"的 session。
+            // miss_count 不生效——启动清理只 reap 明确死亡的，不加 grace period。
+            {
+                let mut guard = store.lock().unwrap();
+                let dead_ids: Vec<String> = guard
+                    .get_all()
+                    .iter()
+                    .filter(|s| !is_session_alive(s))
+                    .map(|s| s.id.clone())
+                    .collect();
+                for id in &dead_ids {
+                    guard.remove_session(id);
+                }
+                if !dead_ids.is_empty() {
+                    eprintln!(
+                        "[PokePoke] startup reap: removed {} dead session(s)",
+                        dead_ids.len()
+                    );
+                }
+            }
+
+            // 高频探活线程：每 5 秒对所有 session（无状态过滤）做一次探活。
+            // Task C 新语义：Idle / LastFailed 不再是终态，同样要被探活。
+            // 连续 2 次 miss 才 reap（grace period = 10 秒），防止 pgrep 偶发
+            // 权限/瞬时失败导致误杀活 agent。
             {
                 let probe_store = store.clone();
                 let probe_popup = popup_list.clone();
@@ -82,29 +107,12 @@ pub fn run() {
                             .lock()
                             .unwrap()
                             .get_all()
-                            .iter()
-                            .filter(|s| {
-                                matches!(
-                                    s.status,
-                                    SessionStatus::Running | SessionStatus::Pending
-                                )
-                            })
-                            .cloned()
-                            .collect();
+                            .to_vec();
 
                         let mut to_remove: Vec<String> = Vec::new();
 
                         for session in &sessions {
-                            // P0: TTY stat for terminal sessions; no-TTY sessions (Cursor etc.)
-                            // are treated as alive until P1-B adds process-level probing.
-                            let alive = match session.terminal_tty.as_deref() {
-                                Some(tty) if !tty.is_empty() => {
-                                    std::path::Path::new(tty).exists()
-                                }
-                                _ => true,
-                            };
-
-                            if alive {
+                            if is_session_alive(session) {
                                 miss_counts.remove(&session.id);
                             } else {
                                 let count =
@@ -116,16 +124,12 @@ pub fn run() {
                             }
                         }
 
-                        // Clean up miss_counts entries for sessions no longer active
+                        // 清理已不存在的 session 对应的 miss_counts
                         miss_counts.retain(|id, _| sessions.iter().any(|s| &s.id == id));
 
-                        // Perform removes outside the sessions borrow.
-                        // Re-check both status AND current liveness before each remove to
-                        // guard against two race classes:
-                        //   1. Hook event changed status to Success between snapshot and now.
-                        //   2. Hook event brought a new terminal_tty between snapshot and now
-                        //      (session migrated to a new terminal); old TTY was gone but new
-                        //      one is valid — removing would silently kill a live session.
+                        // 二次确认后再删：snapshot 到 remove 之间可能有 hook 事件把
+                        // session 的 terminal_tty 或 source 换掉（比如 agent 在另一
+                        // 个终端复活），这时应该让它继续活着。
                         let mut removed_any = false;
                         for session_id in &to_remove {
                             miss_counts.remove(session_id);
@@ -135,18 +139,7 @@ pub fn run() {
                                 .get_all()
                                 .iter()
                                 .find(|s| s.id == *session_id)
-                                .is_some_and(|s| {
-                                    matches!(
-                                        s.status,
-                                        SessionStatus::Running | SessionStatus::Pending
-                                    ) && match s.terminal_tty.as_deref() {
-                                        Some(tty) if !tty.is_empty() => {
-                                            !std::path::Path::new(tty).exists()
-                                        }
-                                        // No TTY: treat as alive (P0 — Cursor etc.)
-                                        _ => false,
-                                    }
-                                });
+                                .is_some_and(|s| !is_session_alive(s));
                             if should_remove {
                                 remove_session_with_cleanup(
                                     &probe_app,
@@ -158,25 +151,9 @@ pub fn run() {
                             }
                         }
 
-                        // Emit once after all removes to avoid per-remove redraws
+                        // 批量 emit 一次，避免按条刷新前端
                         if removed_any {
                             let _ = probe_app.emit("sessions-updated", ());
-                        }
-                    }
-                });
-            }
-
-            // Low-frequency TTL cleanup thread: every 1 hour
-            // Only removes Success sessions older than 24h; does not touch active sessions.
-            {
-                let cleanup_store = store.clone();
-                let cleanup_app = app.handle().clone();
-                std::thread::spawn(move || {
-                    loop {
-                        std::thread::sleep(std::time::Duration::from_secs(3600));
-                        let cleaned = cleanup_store.lock().unwrap().cleanup_expired(24);
-                        if cleaned > 0 {
-                            let _ = cleanup_app.emit("sessions-updated", ());
                         }
                     }
                 });
@@ -237,4 +214,87 @@ fn dirs_next() -> Option<std::path::PathBuf> {
     let dir = std::path::PathBuf::from(home).join(".pokepoke");
     std::fs::create_dir_all(&dir).ok()?;
     Some(dir)
+}
+
+/// 判断一个 session 的宿主（agent 进程 / IDE）是否还活着。
+///
+/// Task C 决策 4：严格按 source 分层，没有"TTY stat 兜底"。
+/// 识别不出 source、或缺关键字段（有 source 但没 TTY 的 CLI agent），
+/// 都直接判死——"宁可误清也不留僵尸"。
+///
+/// 平台：仅 macOS 实现 pgrep 调用；Linux/Windows 先 fallback 到 TTY stat
+/// 兜底，避免未测平台上误杀所有 session。
+fn is_session_alive(session: &Session) -> bool {
+    let source = session.source.as_deref().unwrap_or("").to_ascii_lowercase();
+
+    match source.as_str() {
+        "claude-code" => probe_cli_agent_alive(session, "claude"),
+        "codex" => probe_cli_agent_alive(session, "codex"),
+        "cursor" => probe_cursor_alive(),
+        // source 识别不出：直接判死（决策 4 的 C 方案）
+        _ => false,
+    }
+}
+
+/// 探测 CLI agent（claude-code / codex）的存活：要求
+/// 1) session 有非空 terminal_tty
+/// 2) TTY 设备文件存在
+/// 3) 该 TTY 上能找到对应名字的进程
+fn probe_cli_agent_alive(session: &Session, pname: &str) -> bool {
+    let tty = match session.terminal_tty.as_deref() {
+        Some(t) if !t.is_empty() => t,
+        // 有 source 但缺 TTY 的 CLI agent 无法探活，直接判死
+        _ => return false,
+    };
+
+    // TTY 设备不存在 → 终端已关闭，宿主必死
+    if !std::path::Path::new(tty).exists() {
+        return false;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 的 pgrep -t 接受的是 tty 短名：ttys017（不带 /dev/ 前缀）
+        let tty_short = tty.trim_start_matches("/dev/");
+        match std::process::Command::new("pgrep")
+            .arg("-t")
+            .arg(tty_short)
+            .arg(pname)
+            .output()
+        {
+            Ok(output) => !output.stdout.is_empty(),
+            // pgrep 调用本身失败（二进制不在、权限异常）先当作活着，
+            // 不能因为探活工具出问题就误杀所有 session
+            Err(_) => true,
+        }
+    }
+
+    // 非 macOS 平台未测试 pgrep 语义，保守 fallback：
+    // TTY 存在即视为活着（等同于 Task C 之前的行为）。
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = pname;
+        true
+    }
+}
+
+/// 探测 Cursor app 是否在运行。粒度粗——整个 Cursor 进程存在就算活，
+/// 无法区分具体 workspace 窗口。新语义下可接受。
+fn probe_cursor_alive() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        match std::process::Command::new("pgrep")
+            .arg("-x")
+            .arg("Cursor")
+            .output()
+        {
+            Ok(output) => !output.stdout.is_empty(),
+            Err(_) => true,
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        true
+    }
 }

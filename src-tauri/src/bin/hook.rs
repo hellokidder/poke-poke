@@ -762,12 +762,14 @@ fn handle_stop(task_id: &str, project: &str, cwd: &str, source: Source) {
     let _ = fs::remove_file(flag_path(task_id, "pending"));
 
     let tty = get_tty();
+    // Task C 新语义：Stop 事件表示"这一轮结束，agent 仍活着"，对应 Idle 状态。
+    // 后端仍兼容老字符串 "success" via serde alias，但新 binary 统一发 "idle"。
     let mut payload = serde_json::json!({
         "task_id": task_id,
         "title": format!("{}: {}", source.label(), project),
         "message": "Session completed",
         "source": source.as_str(),
-        "status": "success",
+        "status": "idle",
         "workspace_path": cwd,
     });
     if let Some(ref t) = tty {
@@ -784,12 +786,13 @@ fn handle_stop_failure(task_id: &str, project: &str, cwd: &str, reason: &str) {
     let tty = get_tty();
     // message 留空；真正展示文案由前端根据 failure_reason 做 i18n，
     // 保持 hook binary 不涉及用户可见文案。
+    // Task C 新语义：StopFailure 对应 LastFailed（agent 仍活着，只是上一轮出错）。
     let mut payload = serde_json::json!({
         "task_id": task_id,
         "title": format!("Claude Code: {}", project),
         "message": "",
         "source": "claude-code",
-        "status": "failure",
+        "status": "last_failed",
         "workspace_path": cwd,
         "failure_reason": reason,
     });
@@ -803,10 +806,13 @@ fn handle_cursor_stop(task_id: &str, project: &str, cwd: &str, hook_status: &str
     let _ = fs::remove_file(flag_path(task_id, "registered"));
     let _ = fs::remove_file(flag_path(task_id, "pending"));
 
+    // Cursor 的三种结束分支（completed/aborted/error）在当前阶段统一映射到
+    // Idle——Task C 的 LastFailed 状态目前只给 CC 的 StopFailure 事件用，
+    // Cursor 的语义粒度不够区分真正的 API 错误。
     let (status, msg) = match hook_status {
-        "completed" => ("success", "Agent turn completed"),
-        "aborted" => ("success", "Agent turn aborted"),
-        _ => ("success", "Agent turn ended with error"),
+        "completed" => ("idle", "Agent turn completed"),
+        "aborted" => ("idle", "Agent turn aborted"),
+        _ => ("idle", "Agent turn ended with error"),
     };
 
     let payload = serde_json::json!({
@@ -829,7 +835,7 @@ fn handle_session_end(task_id: &str, project: &str, cwd: &str) {
         "title": format!("Cursor: {}", project),
         "message": "Session ended",
         "source": "cursor",
-        "status": "success",
+        "status": "idle",
         "workspace_path": cwd,
     });
     post_notify(&payload);

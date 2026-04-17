@@ -80,14 +80,18 @@ codex --enable codex_hooks
 
 ## Poke Poke 事件映射
 
+Task C 起，Poke 状态名换成 `running` / `pending` / `idle` / `last_failed`；
+`success` / `failure` 作为 serde alias 向下兼容老数据，新版本 hook binary 不再发这两个字符串。
+
 | Poke 状态 | CC 事件 | Codex 事件 | Cursor 事件 |
 |-----------|---------|-----------|------------|
-| 注册/running | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
-| pending(等待用户) | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应(GUI 自带可视化) |
-| failure(API 报错) | **StopFailure** ✅ 已接入 | 无对应 | 无对应 |
-| success(轮次完成) | Stop | Stop | stop |
+| running（注册/工作中） | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
+| pending（等待用户） | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应（GUI 自带可视化） |
+| last_failed（上一轮 API 错误） | **StopFailure** ✅ 已接入 | 无对应 | 无对应 |
+| idle（一轮正常结束） | Stop | Stop | stop |
 
 **注意：**
+- Task C 重构后，`idle` / `last_failed` **不是** session 的终态——它们表示"agent 活着、上一轮已结束"，session 生命周期改由宿主进程存活决定（见 `docs/session-lifecycle-refactor.md`）。
 - Cursor 没有等待用户交互的 hook，GUI 界面自带权限弹窗。
 - Codex 没有 Notification 事件，pending 感知需走 legacy_notify 机制或用 Stop 事件兜底。
 - Codex hooks 仍在开发中（feature flag），接入需考虑稳定性风险。
@@ -96,5 +100,5 @@ codex --enable codex_hooks
 
 1. **hook 处理逻辑无需修改** — 5 个核心事件的 JSON 格式与 CC 兼容，serde_json Value 天然忽略额外字段
 2. **新增安装逻辑** — 需读写 `~/.codex/config.toml`，格式与 CC 的 settings.json 不同
-3. **pending 感知方案** — 需调研 legacy_notify 的接入方式，或暂时只支持 running/success 两态
+3. **pending 感知方案** — 需调研 legacy_notify 的接入方式，或暂时只支持 running/idle 两态
 4. **source 标识** — task_id 前缀用 `codex-` 区分（类似现有 `cc-` / `cursor-`）
