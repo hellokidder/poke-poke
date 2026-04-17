@@ -46,51 +46,56 @@
 
 ## 三、Phase 1 — 核心业务逻辑
 
-### 3.1 sessions.rs — 状态机（16 个测试）
+### 3.1 sessions.rs — 状态机（Task C 后四态 + 探活）
 
 文件：`src-tauri/src/sessions.rs`
 测试模式：`tempfile::tempdir()` 创建隔离 SessionStore
 
-#### upsert_session() 状态转换（10 个）
+#### upsert_session() 状态转换
 
 | # | 场景 | 预期 |
 |---|------|------|
 | 1 | 新 session 插入 | `is_new == true`，列表新增一条记录 |
 | 2 | 同 `task_id` 再次 upsert | `is_new == false`, 只有一条记录 |
-| 3 | Running → Success | 状态更新为 `Success` |
+| 3 | Running → Idle | 状态更新为 `Idle` |
+| 3b | Running → LastFailed（含 failure_reason） | 状态更新为 `LastFailed`，`failure_reason` 被保存 |
 | 4 | Running → Pending | 状态更新为 `Pending` |
 | 5 | Pending → Running | 状态更新为 `Running` |
-| 6 | Success → Running | 状态更新为 `Running` |
+| 6 | Idle → Running | 状态更新为 `Running`（新一轮） |
+| 6b | LastFailed → Running | 状态更新为 `Running`，旧 `failure_reason` 被清除 |
 | 7 | Running → Running | 状态保持 `Running` |
 | 8 | `source: None` 更新 | 不覆盖已有 source |
 | 9 | `terminal_tty: None` 更新 | 不覆盖已有 tty |
 | 10 | `prev_status` 返回值 | 等于更新前的状态 |
+| 10b | 非 LastFailed 收到 `failure_reason` | 字段被忽略，不写入 |
+| 10c | 老数据 serde alias | `"success"` → `Idle`，`"failure"` → `LastFailed` |
 
-#### unread_count()（不纳入当前计划）
+#### ~~cleanup_expired()~~（Task C 已移除）
 
-当前产品设计不包含未读计数逻辑，`unread_count` 相关测试不纳入当前计划。
+TTL 已删除；相关测试不再适用。Session 回收改由 `lib.rs` 的启动 reap + 高频探活驱动。
 
-#### mark_read / mark_all_read（不纳入当前计划）
-
-当前产品设计不包含标记已读逻辑，`mark_read` / `mark_all_read` 相关测试不纳入当前计划。
-
-#### cleanup_expired()（3 个）
+#### lib.rs 探活（建议用集成测试或手工冒烟覆盖）
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 11 | 过期终态 session | 被删除 |
-| 12 | Running / Pending（即使过期） | 保留 |
-| 13 | 未过期终态 | 保留 |
+| 11 | `is_session_alive` — source=claude-code、TTY 上 claude 进程在 | true |
+| 12 | `is_session_alive` — source=codex、TTY 上无 codex 进程 | false |
+| 13 | `is_session_alive` — source=cursor、Cursor app 运行中 | true |
+| 14 | `is_session_alive` — source 未知 / CLI 缺 TTY | false（宁可误清） |
+| 15 | 启动 reap | sessions.json 中宿主已死的 session 启动后立即消失 |
+| 16 | Grace period 2 次 miss | 单次 miss 保留，连续 2 次 miss 触发 remove |
 
-#### 持久化（3 个）
+> 注：进程探活（pgrep）不是纯函数，集成测试或手工冒烟更合适；纯单测只测 `is_session_alive` 的分支路由逻辑。
+
+#### 持久化
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 14 | save → load 往返 | 数据一致 |
-| 15 | 文件不存在 | 空列表，不 panic |
-| 16 | 文件内容损坏 | 空列表，不 panic |
+| 17 | save → load 往返 | 数据一致 |
+| 18 | 文件不存在 | 空列表，不 panic |
+| 19 | 文件内容损坏 | 空列表，不 panic |
 
-### 3.2 http_server.rs — 弹窗决策纯函数（8 个测试）
+### 3.2 http_server.rs — 弹窗决策纯函数
 
 文件：`src-tauri/src/http_server.rs`
 
@@ -101,23 +106,28 @@ pub fn should_close_popup(is_new: bool, status: &SessionStatus, prev: Option<&Se
 pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, is_new: bool) -> bool
 ```
 
-#### should_close_popup（4 个）
+#### should_close_popup
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 17 | 新 session（`is_new == true`） | → false（新 session 无旧弹窗可关） |
-| 18 | 已有 session，Running，prev = Success | → true（终态恢复运行，关旧弹窗） |
-| 19 | 已有 session，Running，prev = Pending | → true（用户批准权限，关弹窗） |
-| 20 | 已有 session，Running，prev = Running | → false（无状态变化） |
+| 20 | 新 session（`is_new == true`） | → false（新 session 无旧弹窗可关） |
+| 21 | 已有 session，Running，prev = Idle | → true（新一轮开始，关旧 idle 弹窗） |
+| 21b | 已有 session，Running，prev = LastFailed | → true（新一轮开始，关旧 last_failed 弹窗） |
+| 22 | 已有 session，Running，prev = Pending | → true（用户批准权限，关弹窗） |
+| 23 | 已有 session，Running，prev = Running | → false（无状态变化） |
 
-#### should_show_popup（4 个）
+#### should_show_popup
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 21 | status = Success，prev = Running | → true（终态转换弹通知） |
-| 22 | status = Pending，prev = Running | → true（权限等待弹通知） |
-| 23 | status = Running，prev = Pending | → false（恢复运行不弹） |
-| 24 | 新 session，status = Pending | → true（新建即待批准） |
+| 24 | status = Idle，prev = Running | → true（stage-ending 弹通知） |
+| 24b | status = LastFailed，prev = Running | → true（stage-ending 弹通知） |
+| 24c | status = Idle，prev = Idle | → false（同状态 upsert 不重复弹） |
+| 24d | status = LastFailed，prev = LastFailed | → false |
+| 25 | status = Pending，prev = Running | → true（权限等待弹通知） |
+| 26 | status = Running，prev = Pending | → false（恢复运行不弹） |
+| 27 | 新 session，status = Pending | → true（新建即待批准） |
+| 27b | 新 session，status = Idle / LastFailed | → true（新建视为 stage-ending） |
 
 ---
 
@@ -163,9 +173,10 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 40 | Cursor `stop` + `hookStatus:"completed"` | status = success |
+| 40 | Cursor `stop` + `hookStatus:"completed"` | status = idle |
+| 40b | CC `StopFailure` + reason | status = last_failed + `failure_reason` 透传 |
 | 41 | CC `Notification` | source = `claude-code`，保留原始 message |
-| 42 | Codex `Stop` | task_id 前缀为 `codex-` |
+| 42 | Codex `Stop` | task_id 前缀为 `codex-`，status = idle |
 | 43 | task_id 生成 | source prefix + session_id 拼接正确 |
 
 ### 4.2 settings.rs — 设置存储（4 个测试）
@@ -192,8 +203,9 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 |---|------|------|
 | 48 | `hashColor` 确定性 | 同输入同输出（固定样例快照） |
 | 49 | `hashColor` 输出格式 | 匹配 `hsl(H, 65%, 60%)` |
-| 50 | `getExpression` 三种状态 | 各返回 16 个像素元组 |
+| 50 | `getExpression` 四种状态 | `running` / `pending` / `idle` / `last_failed` 各返回 16 个像素元组 |
 | 51 | `getExpression("pending")` | 使用白色 `#FFFFFF` 画眼睛 |
+| 51b | `getExpression("idle")` 与 `last_failed` | 分别复用旧 `success` / `failure` 表情不变 |
 
 ### 5.2 SettingsWindow 键盘解析（8 个测试）
 
@@ -224,7 +236,9 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 | 63 | `sourceLabel(null)` | → `""` |
 | 64 | `workspacePath` 缩写 `/Users/xxx/` | → `~/` |
 | 65 | `isActive({status:"running"})` | → `true` |
-| 66 | `isActive({status:"success"})` | → `false` |
+| 65b | `isActive({status:"pending"})` | → `true` |
+| 66 | `isActive({status:"idle"})` | → `false` |
+| 66b | `isActive({status:"last_failed"})` | → `false` |
 
 ### 5.4 i18n 翻译（3 个测试）
 
@@ -297,7 +311,11 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 - [ ] 快捷键录入 → 全局生效 → 切换设置窗口可见性
 - [ ] 开机自启动开关 → 重启 macOS 验证
 - [ ] 通知面板按注册时间先后排列（先注册的在上）
-- [ ] 终态任务显示删除按钮，点击删除生效
+- [ ] Idle / LastFailed 会话显示删除按钮，点击删除生效
+- [ ] 启动 reap：预置一条 `source` 未知或宿主已死的 session 到 `sessions.json`，启动后立即消失
+- [ ] CLI agent 探活：关闭终端后，5~10s 内对应 session 从面板消失
+- [ ] Cursor 探活：退出整个 Cursor app 后，5~10s 内对应 session 从面板消失
+- [ ] StopFailure i18n：CC 命中 API 错误时，popup 文案走 `failure.<reason>` 翻译
 - [ ] port 9876 被占用时 fallback 到 9877
 
 ---
