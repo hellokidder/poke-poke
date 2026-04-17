@@ -15,13 +15,18 @@ use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
-        ))
+        ));
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
+    builder
         .setup(|app| {
             // macOS 的 "菜单栏工具" 模式通过 Info.plist 的 LSUIElement=true 声明
             // （见 tauri.conf.json / 打包产物的 Info.plist）。这样 NSApp 从启动
