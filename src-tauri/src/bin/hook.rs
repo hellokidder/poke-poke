@@ -20,7 +20,13 @@ const POKE_PORTS: &[u16] = &[9876, 9877];
 const LOCK_DIR: &str = "/tmp";
 
 // Events we register for Claude Code
-const CC_HOOK_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit", "Notification", "Stop"];
+const CC_HOOK_EVENTS: &[&str] = &[
+    "SessionStart",
+    "UserPromptSubmit",
+    "Notification",
+    "Stop",
+    "StopFailure",
+];
 // Events we register for Codex CLI
 const CODEX_HOOK_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit", "Stop"];
 // Events we register for Cursor
@@ -647,6 +653,16 @@ fn hook_mode() {
                 handle_stop(&task_id, &project, &cwd, source);
             }
         }
+        "StopFailure" => {
+            // CC only：一轮对话因 API 错误终止；matcher 值通过 reason 字段传回。
+            // 其他 source 不该收到此事件；收到了也跳过，避免误触发。
+            if source == Source::ClaudeCode {
+                // 兜底 key 名（CC 目前用 reason，预留别名以防官方变更）
+                let reason = pick_str(&data, &["reason", "stop_reason", "error_type"])
+                    .unwrap_or_else(|| "unknown".into());
+                handle_stop_failure(&task_id, &project, &cwd, &reason);
+            }
+        }
         "SessionEnd" => {
             // Cursor only
             handle_session_end(&task_id, &project, &cwd);
@@ -753,6 +769,29 @@ fn handle_stop(task_id: &str, project: &str, cwd: &str, source: Source) {
         "source": source.as_str(),
         "status": "success",
         "workspace_path": cwd,
+    });
+    if let Some(ref t) = tty {
+        payload["terminal_tty"] = Value::String(t.clone());
+    }
+    post_notify(&payload);
+}
+
+fn handle_stop_failure(task_id: &str, project: &str, cwd: &str, reason: &str) {
+    // 与 handle_stop 一样清理 flag，StopFailure 同样是"这一轮结束"的信号
+    let _ = fs::remove_file(flag_path(task_id, "registered"));
+    let _ = fs::remove_file(flag_path(task_id, "pending"));
+
+    let tty = get_tty();
+    // message 留空；真正展示文案由前端根据 failure_reason 做 i18n，
+    // 保持 hook binary 不涉及用户可见文案。
+    let mut payload = serde_json::json!({
+        "task_id": task_id,
+        "title": format!("Claude Code: {}", project),
+        "message": "",
+        "source": "claude-code",
+        "status": "failure",
+        "workspace_path": cwd,
+        "failure_reason": reason,
     });
     if let Some(ref t) = tty {
         payload["terminal_tty"] = Value::String(t.clone());

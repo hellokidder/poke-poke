@@ -60,6 +60,24 @@ export default function PopupWindow() {
     : "";
   const canFocus = !!(session.terminal_tty || session.workspace_path);
 
+  // Failure 状态下优先用 failure_reason 做本地化展示；
+  // reason 为空或不在白名单时统一回退到 unknown，避免直接把 "stop_failure.xxx" 键名露给用户。
+  const displayMessage = (() => {
+    if (session.status !== "failure") return session.message;
+    const KNOWN_REASONS = [
+      "rate_limit",
+      "server_error",
+      "authentication_failed",
+      "billing_error",
+      "invalid_request",
+      "max_output_tokens",
+    ];
+    const reason = session.failure_reason && KNOWN_REASONS.includes(session.failure_reason)
+      ? session.failure_reason
+      : "unknown";
+    return t(`stop_failure.${reason}`);
+  })();
+
   return (
     <div
       className={`popup-container ${visible ? "show" : ""} ${statusClass}`}
@@ -78,7 +96,7 @@ export default function PopupWindow() {
               <span className="popup-source">{session.source}</span>
             )}
           </div>
-          <div className="popup-message">{session.message}</div>
+          <div className="popup-message">{displayMessage}</div>
           <div className="popup-footer">
             <span className="popup-time">{timeAgo(session.created_at)}</span>
             {canFocus && (

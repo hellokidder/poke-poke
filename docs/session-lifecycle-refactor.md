@@ -389,27 +389,30 @@ fn is_cursor_process_running() -> bool {
 > - popup 抑制粒度：app 级（frontmost == Cursor 即抑制）
 > - 触发宿主元数据分层的条件：出现"一个 Agent 同时运行在终端和 GUI"的真实场景
 
-### P1-C：CC `StopFailure` 事件接入
+### P1-C：CC `StopFailure` 事件接入 ✅ 已完成
 
-**背景**：CC 支持 `StopFailure` hook 事件，当一轮对话因 API 错误结束时触发（fire-and-forget，output 和 exit code 被忽略）。当前 Poke Poke 未接入此事件，CC 遇到网关报错/限速时用户无感知。
+**背景**：CC 支持 `StopFailure` hook 事件，当一轮对话因 API 错误结束时触发（fire-and-forget，output 和 exit code 被忽略）。
 
 **matcher 值（错误类型）**：`rate_limit`、`authentication_failed`、`billing_error`、`invalid_request`、`server_error`、`max_output_tokens`、`unknown`
 
-**映射方案**：
+**映射方案（已落地）**：
 
-| StopFailure 错误类型 | Poke Poke 状态 | popup 行为 |
+| StopFailure 错误类型 | Poke Poke 状态 | 展示 |
 |---|---|---|
-| `rate_limit` | `pending` | 提示"被限速，需等待" |
-| `server_error` | `pending` | 提示"服务端错误" |
-| `authentication_failed` | `pending` | 提示"认证失败" |
-| 其他 | `pending` | 通用 API 错误提示 |
+| 所有 matcher | `failure`（终态） | popup 红色 + 前端按 `failure_reason` 做 i18n，zh/en 各一套文案 |
 
-**文件**：
-- `src-tauri/src/bin/hook.rs`：CC hook 配置注册 `StopFailure` 事件
-- `src-tauri/src/http_server.rs`：`/notify` 处理 `StopFailure` 类型事件，映射为 `pending` + 错误信息
-- `src/i18n/strings.ts`：新增错误提示文案
+**与原方案的差异**：原规划映射到 `pending`，实际落地后改为新增的 `failure` 终态（Task A）。理由：StopFailure 是"这一轮任务已终止"信号，pending 的语义是"等待用户交互"，混用会让 reap 探活、popup 触发规则变脏。
 
-**改动范围**：小。hook binary 加事件映射 + http_server 加处理分支 + 前端加文案。
+**数据结构**：`Session` 新增 `failure_reason: Option<String>` 字段（serde_default 向下兼容），仅 Failure 状态下携带；状态转出 Failure 时自动清空。
+
+**文件改动**：
+- `src-tauri/src/bin/hook.rs`：`CC_HOOK_EVENTS` 加 `"StopFailure"`，新增 `handle_stop_failure()`
+- `src-tauri/src/http_server.rs`：`/notify` 请求体支持 `failure_reason` 字段
+- `src-tauri/src/sessions.rs`：`Session` 加 `failure_reason`，`upsert_session` 透传
+- `src/types.ts` / `src/i18n/strings.ts`：前端类型 + `stop_failure.*` 文案
+- `src/popup/PopupWindow.tsx`：根据 `failure_reason` 渲染本地化 message
+
+**已知升级路径要求**：老版本 PokePoke 用户升级后，`~/.claude/settings.json` 不会自动补 `StopFailure` 注册；`poke-hook --check` 会报 `hooks_configured: false`，用户需重新点一次"安装"。选择不在 check 里做自动迁移，因为 check 语义是只读+幂等。
 
 ---
 
@@ -438,6 +441,8 @@ fn is_cursor_process_running() -> bool {
 | `src-tauri/src/popup.rs` | Cursor frontmost 抑制、Warp/Ghostty 粗粒度兜底 | P1-B |
 | `src-tauri/src/lib.rs` | `is_alive()` 按 source 分发、Cursor 进程探活 | P1-B |
 | `docs/session-list-architecture.md` | 声明 Cursor 能力边界 | P1-B |
-| `src-tauri/src/bin/hook.rs` | CC hook 注册 `StopFailure` 事件 | P1-C |
-| `src-tauri/src/http_server.rs` | 处理 `StopFailure` 映射为 `pending` + 错误信息 | P1-C |
-| `src/i18n/strings.ts` | API 错误提示文案 | P1-C |
+| `src-tauri/src/bin/hook.rs` | CC hook 注册 `StopFailure` 事件 + `handle_stop_failure` | P1-C ✅ |
+| `src-tauri/src/http_server.rs` | `/notify` 支持 `failure_reason` 字段 | P1-C ✅ |
+| `src-tauri/src/sessions.rs` | `Session` 加 `failure_reason` 字段 | P1-C ✅ |
+| `src/i18n/strings.ts` | `stop_failure.*` 本地化文案 | P1-C ✅ |
+| `src/popup/PopupWindow.tsx` | 失败原因本地化渲染 | P1-C ✅ |

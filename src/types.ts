@@ -12,4 +12,5 @@ export interface Session {
   updated_at: string;
   terminal_tty: string | null;
   workspace_path: string | null;
+  failure_reason: string | null;
 }

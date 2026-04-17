@@ -84,7 +84,7 @@ codex --enable codex_hooks
 |-----------|---------|-----------|------------|
 | 注册/running | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
 | pending(等待用户) | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应(GUI 自带可视化) |
-| pending(API 报错) | **StopFailure**（P1-C 待接入） | 无对应 | 无对应 |
+| failure(API 报错) | **StopFailure** ✅ 已接入 | 无对应 | 无对应 |
 | success(轮次完成) | Stop | Stop | stop |
 
 **注意：**

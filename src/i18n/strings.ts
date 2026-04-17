@@ -14,6 +14,15 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.success": "已完成",
     "status.failure": "已失败",
 
+    // StopFailure reason（Claude Code 一轮因 API 错误终止时的具体原因）
+    "stop_failure.rate_limit": "API 错误 · 被限速",
+    "stop_failure.server_error": "API 错误 · 服务端异常",
+    "stop_failure.authentication_failed": "API 错误 · 认证失败",
+    "stop_failure.billing_error": "API 错误 · 账单问题",
+    "stop_failure.invalid_request": "API 错误 · 请求无效",
+    "stop_failure.max_output_tokens": "API 错误 · 达到输出上限",
+    "stop_failure.unknown": "API 错误",
+
     // Panel
     "panel.active_count": "{n} 个活跃",
     "panel.no_active": "无活跃连接",
@@ -52,6 +61,15 @@ export const strings: Record<Locale, Record<string, string>> = {
     "status.pending": "Pending",
     "status.success": "Completed",
     "status.failure": "Failed",
+
+    // StopFailure reason (Claude Code API error detail)
+    "stop_failure.rate_limit": "API error · rate limited",
+    "stop_failure.server_error": "API error · server error",
+    "stop_failure.authentication_failed": "API error · authentication failed",
+    "stop_failure.billing_error": "API error · billing issue",
+    "stop_failure.invalid_request": "API error · invalid request",
+    "stop_failure.max_output_tokens": "API error · max output tokens reached",
+    "stop_failure.unknown": "API error",
 
     // Panel
     "panel.active_count": "{n} active",

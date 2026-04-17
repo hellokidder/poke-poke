@@ -36,6 +36,9 @@ struct NotifyRequest {
     terminal_tty: Option<String>,
     #[serde(default)]
     workspace_path: Option<String>,
+    // 配合 status=failure 使用；其他状态会被 upsert_session 忽略。
+    #[serde(default)]
+    failure_reason: Option<String>,
 }
 
 pub async fn start(
@@ -107,6 +110,7 @@ async fn handle_notify(
             status,
             req.terminal_tty,
             req.workspace_path,
+            req.failure_reason,
         )
     };
 

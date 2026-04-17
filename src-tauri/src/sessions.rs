@@ -48,6 +48,11 @@ pub struct Session {
     pub terminal_tty: Option<String>,
     #[serde(default)]
     pub workspace_path: Option<String>,
+    // Failure 状态下的 reason code（如 CC StopFailure 的 matcher 值）。
+    // 只在 status=Failure 时有意义；前端负责根据 reason 做本地化展示。
+    // 老 sessions.json 里没有这个字段，serde_default 保证兼容。
+    #[serde(default)]
+    pub failure_reason: Option<String>,
 }
 
 pub struct SessionStore {
@@ -98,6 +103,7 @@ impl SessionStore {
         status: SessionStatus,
         terminal_tty: Option<String>,
         workspace_path: Option<String>,
+        failure_reason: Option<String>,
     ) -> UpsertResult {
         // Try to find existing session by task_id
         if let Some(existing) = self.sessions.iter_mut().find(|s| s.task_id == task_id) {
@@ -108,7 +114,7 @@ impl SessionStore {
                 existing.source = source;
             }
             existing.priority = priority;
-            existing.status = status;
+            existing.status = status.clone();
             existing.updated_at = Utc::now();
             if terminal_tty.is_some() {
                 existing.terminal_tty = terminal_tty;
@@ -116,6 +122,13 @@ impl SessionStore {
             if workspace_path.is_some() {
                 existing.workspace_path = workspace_path;
             }
+            // failure_reason：只在进入 Failure 时才覆盖；其他状态下清空，避免
+            // 一条 session 从 Failure 回到 Running 后仍显示旧的失败原因。
+            existing.failure_reason = if status == SessionStatus::Failure {
+                failure_reason
+            } else {
+                None
+            };
             let session = existing.clone();
             self.save();
             UpsertResult {
@@ -125,6 +138,12 @@ impl SessionStore {
             }
         } else {
             let now = Utc::now();
+            // 同理：非 Failure 新 session 不该携带 failure_reason
+            let failure_reason = if status == SessionStatus::Failure {
+                failure_reason
+            } else {
+                None
+            };
             let session = Session {
                 id: uuid::Uuid::new_v4().to_string(),
                 task_id,
@@ -137,6 +156,7 @@ impl SessionStore {
                 updated_at: now,
                 terminal_tty,
                 workspace_path,
+                failure_reason,
             };
             self.sessions.insert(0, session.clone());
             self.save();
