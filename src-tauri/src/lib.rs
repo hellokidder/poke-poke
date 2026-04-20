@@ -262,17 +262,30 @@ fn probe_cli_agent_alive(session: &Session, pname: &str) -> bool {
 
     #[cfg(target_os = "macos")]
     {
-        // macOS 的 pgrep -t 接受的是 tty 短名：ttys017（不带 /dev/ 前缀）
+        // macOS 26 (Tahoe) 上 `pgrep -t <tty>` 对用户终端 session 的进程
+        // 已经持续返回空（实测 ttys009 上明明有 claude，pgrep -t 找不到，
+        // 但 ps -t 列得出来），改用 `ps -t` 解析 comm 字段做匹配。
+        // tty 形如 "/dev/ttys017"，ps -t 接受不带 /dev/ 前缀的短名。
         let tty_short = tty.trim_start_matches("/dev/");
-        match std::process::Command::new("pgrep")
+        match std::process::Command::new("ps")
             .arg("-t")
             .arg(tty_short)
-            .arg(pname)
+            .arg("-o")
+            .arg("comm=")
             .output()
         {
-            Ok(output) => !output.stdout.is_empty(),
-            // pgrep 调用本身失败（二进制不在、权限异常）先当作活着，
-            // 不能因为探活工具出问题就误杀所有 session
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                stdout.lines().any(|line| {
+                    // ps comm 列可能带完整路径（/usr/local/bin/claude）也可能是
+                    // 短名（claude），文件名末段相等即视为命中
+                    let trimmed = line.trim();
+                    let leaf = trimmed.rsplit('/').next().unwrap_or(trimmed);
+                    leaf == pname
+                })
+            }
+            // ps 调用本身失败（极罕见）先当作活着，不能因为探活工具
+            // 出问题就误杀所有 session
             Err(_) => true,
         }
     }

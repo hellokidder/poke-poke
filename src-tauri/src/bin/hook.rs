@@ -73,11 +73,10 @@ fn detect_source(data: &Value) -> Source {
     } else if data.get("turn_id").is_some()
         || data.get("stop_hook_active").is_some()
         || data.get("model").is_some()
-        || matches!(
-            data.get("source").and_then(|v| v.as_str()),
-            Some("startup" | "resume" | "clear")
-        )
     {
+        // 注意：不能用 `source: startup/resume/clear/compact` 作为 codex 信号——
+        // CC 的 SessionStart payload 同样带 source 字段（参见 Anthropic Hooks
+        // reference），用它会把每个 cc 新会话误判成 codex。
         Source::Codex
     } else {
         Source::ClaudeCode
@@ -1170,6 +1169,45 @@ mod tests {
     fn detect_source_identifies_codex_and_claude_code() {
         assert_eq!(detect_source(&json!({"turn_id": "turn-1"})), Source::Codex);
         assert_eq!(detect_source(&json!({"foo": "bar"})), Source::ClaudeCode);
+    }
+
+    #[test]
+    fn detect_source_treats_cc_session_start_with_source_field_as_claude_code() {
+        // CC 的 SessionStart payload 也带 source: startup/resume/clear/compact，
+        // 不能据此判定为 codex（详见 Anthropic Hooks reference）。
+        for source_val in ["startup", "resume", "clear", "compact"] {
+            let payload = json!({
+                "session_id": "abcdef123456",
+                "cwd": "/tmp/proj",
+                "hook_event_name": "SessionStart",
+                "source": source_val,
+            });
+            assert_eq!(
+                detect_source(&payload),
+                Source::ClaudeCode,
+                "cc SessionStart with source={source_val} should be ClaudeCode",
+            );
+        }
+    }
+
+    #[test]
+    fn detect_source_still_identifies_codex_session_start_via_turn_or_model() {
+        // codex 自己的 SessionStart 通常携带 model 字段；后续事件带 turn_id /
+        // stop_hook_active，仍然要走 codex 分支。
+        let codex_session_start = json!({
+            "session_id": "codexsession",
+            "cwd": "/tmp/proj",
+            "hook_event_name": "SessionStart",
+            "source": "startup",
+            "model": "gpt-5",
+        });
+        assert_eq!(detect_source(&codex_session_start), Source::Codex);
+
+        let codex_stop = json!({
+            "session_id": "codexsession",
+            "stop_hook_active": false,
+        });
+        assert_eq!(detect_source(&codex_stop), Source::Codex);
     }
 
     #[test]
