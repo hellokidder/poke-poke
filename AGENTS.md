@@ -52,8 +52,8 @@ task brief 至少要写清楚：
   - hook 输入协议、安装、检查、卸载
 - `src-tauri/src/http_server.rs`
   - `/notify` 请求入口、状态流转、弹窗判定
-- `src-tauri/src/notifications.rs`
-  - session/task 持久化与状态模型
+- `src-tauri/src/sessions.rs`
+  - session/task 持久化与状态模型（旧名 `notifications.rs`，已重命名）
 - `src-tauri/src/commands.rs`
   - Tauri commands 与系统集成
 - `src/panel/*`

@@ -1,5 +1,7 @@
 # Popup 抢焦点问题 — 技术方案与现状
 
+> ✅ **结论已落地**（见 §13 spike / §14 主干接入与验收）：方案 P1（`tauri-nspanel`）已合入主干，老的 `macos_panel` objc2 手写分支已删除。本文档保留为**决策演进记录**，§1–§12 是当时的排查与选型过程，**不再代表当前实现状态**。
+>
 > 本文档记录截至 `ba78151` 提交为止对"poke 弹窗打断用户输入"问题的排查过程、
 > 已实施的方案、已知不生效的场景，以及候选后续方案。供会议讨论用。
 
@@ -170,7 +172,7 @@
 
 ### 方案 P3：popup 改走 macOS 原生通知中心 / `NSUserNotification`
 
-- 做法：`status=success/failed` 时调系统通知，不再自建 WebView 弹窗。
+- 做法：`status=idle/last_failed` 时调系统通知，不再自建 WebView 弹窗。
 - 优点：
   - 彻底不抢焦点（系统通知机制天然不激活 app）
   - 零维护成本，零新依赖（Tauri 有 `tauri-plugin-notification`）

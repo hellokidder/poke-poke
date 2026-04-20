@@ -86,7 +86,7 @@ Session 在以下时机被注册（创建/更新）到列表：
 
 - **点击 Session 项** → 跳转到对应的终端/编辑器窗口（focus terminal by tty / open Cursor workspace）
 - **右下角** → Settings 齿轮图标，点击打开设置面板（模块 2）
-- **左下角** → 全局开关 Switch，控制 Poke Poke 的启用/禁用（禁用后不再接收 hook 事件、不弹出提示）
+- ~~**左下角** → 全局开关 Switch，控制 Poke Poke 的启用/禁用（禁用后不再接收 hook 事件、不弹出提示）~~ — **未实现**（产品规划项，详见下文 §"与当前代码的差异说明 §2 全局开关缺失" 和 §"后续 TODO 第 6 条"）
 
 ### Session 生命周期
 

@@ -2,10 +2,10 @@
 
 ## 第一梯队：核心设置
 
-- [ ] **提示音设置** — 选择系统音效 / 自定义音效 / 静音（当前硬编码 `Glass.aiff`）
-- [ ] **弹窗自动消失时间** — 超时自动消失（如 10s / 30s / 永不），当前仅靠 TTY 焦点自动关闭
-- [ ] **语言切换** — 中 / 英切换（当前全中文硬编码："刚刚"、"X分钟前" 等）
-- [ ] **开机自启** — macOS Login Items 注册
+- [x] **提示音设置** — 选择系统音效 / 静音；`settings.alert_sound` 默认 `system:Glass`，设置页含下拉选择与试听
+- [x] ~~**弹窗自动消失时间**~~ — 已撤销该设计：popup 不自动超时，仅靠"用户聚焦对应终端"或"session 进入新一轮"关闭。`Settings` 不含 `popup_timeout` 字段
+- [x] **语言切换** — `settings.locale` zh / en，UI 实时切换（`src/i18n/strings.ts`）
+- [x] **开机自启** — `settings.auto_start` + `@tauri-apps/plugin-autostart`
 
 ## 第二梯队：个性化体验
 

@@ -47,7 +47,9 @@ codex --enable codex_hooks
 
 **stdin JSON 共有字段：** `session_id`, `cwd`, `hook_event_name`, `permission_mode`, `transcript_path`, `tool_name`, `tool_input`, `tool_use_id`
 
-**Codex 额外字段：** `turn_id`, `source`(SessionStart), `stop_hook_active`(Stop), `model`
+**Codex 独有字段：** `turn_id`, `stop_hook_active`(Stop), `model`
+
+> ⚠️ `source: startup/resume/clear/compact`（SessionStart 上的字段）**两边都有**，不是 codex 独有，详见 Anthropic Hooks reference。早期 `detect_source` 曾把它当作 codex 信号导致每个 cc 新会话被误判，已修复。
 
 **CC 额外字段：** `agent_id`, `agent_type`（子 agent 感知）
 
@@ -102,6 +104,8 @@ P1-A 起，hook binary 对 `/notify` 还会显式发送 `event_type`，用于区
 - Codex hooks 仍在开发中（feature flag），接入需考虑稳定性风险。
 
 ## Poke 接入 Codex 开发要点
+
+> ⚠️ Codex hook 正式接入当前是 **Non-goal**（见 `AGENTS.md §9b`）。现有代码中的 Codex 路径仍在 feature flag 后面，本节仅作未来恢复推进时的设计参考，不应作为当前阶段开工依据。
 
 1. **hook 处理逻辑无需修改** — 5 个核心事件的 JSON 格式与 CC 兼容，serde_json Value 天然忽略额外字段
 2. **新增安装逻辑** — 需读写 `~/.codex/config.toml`，格式与 CC 的 settings.json 不同

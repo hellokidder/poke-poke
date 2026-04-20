@@ -185,7 +185,7 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 
 | # | 场景 | 预期 |
 |---|------|------|
-| 44 | 默认值 | `alert_sound == "system:Glass"`, `locale == "zh"` |
+| 44 | 默认值 | `alert_sound == "system:Glass"`, `locale == "zh"`, `auto_start == false`, `panel_shortcut == None`（**不再有** `popup_timeout` / `session_retention_hours`） |
 | 45 | update + save → load | 往返一致 |
 | 46 | 部分 JSON（缺失字段） | 缺失字段用默认值补齐 |
 | 47 | 损坏文件 | 加载默认值，不 panic |
@@ -305,7 +305,6 @@ pub fn should_show_popup(status: &SessionStatus, prev: Option<&SessionStatus>, i
 - [ ] Popup 弹出位置正确（右上角向下堆叠）
 - [ ] Popup 点击 → 聚焦对应终端（iTerm2 / Terminal.app）
 - [ ] Popup 用户切到对应终端后自动消失
-- [ ] Popup 超时自动消失（设置非 0 时）
 - [ ] 设置页修改音效 → 预览播放 → 重启后持久化
 - [ ] 设置页修改语言 → 全局 UI 切换
 - [ ] 快捷键录入 → 全局生效 → 切换设置窗口可见性
