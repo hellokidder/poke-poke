@@ -14,7 +14,7 @@ interface Settings {
 const MOD_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
 
 /** Map e.code to a key name the global-hotkey library understands */
-function codeToKey(e: KeyboardEvent): string | null {
+export function codeToKey(e: KeyboardEvent): string | null {
   const { code, key } = e;
   // Letters: KeyA → A
   if (code.startsWith("Key")) return code.slice(3);
@@ -58,7 +58,7 @@ function codeToKey(e: KeyboardEvent): string | null {
   return null;
 }
 
-function eventToShortcut(e: KeyboardEvent): string | null {
+export function eventToShortcut(e: KeyboardEvent): string | null {
   if (MOD_KEYS.has(e.key)) return null;
   const parts: string[] = [];
   if (e.metaKey || e.ctrlKey) parts.push("CmdOrCtrl");
@@ -71,7 +71,7 @@ function eventToShortcut(e: KeyboardEvent): string | null {
   return parts.join("+");
 }
 
-function formatShortcut(s: string): string {
+export function formatShortcut(s: string): string {
   return s
     .replace(/CmdOrCtrl/g, "\u2318")
     .replace(/Alt/g, "\u2325")

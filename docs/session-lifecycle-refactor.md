@@ -269,9 +269,11 @@ fn remove_session_with_cleanup(
 
 > 分为"协议升级"和"Cursor/终端扩展"两个独立批次，可并行推进。
 
-### P1-A：协议升级批次
+### P1-A：协议升级批次 ✅ 已实现
 
 **背景**：涉及 hook binary 改动和三端配置升级，需要协调上线节奏，单独出 brief。
+
+> 2026-04-18 更新：P1-A 已落地。当前 `/notify` 显式区分 `event_type`，老 hook 缺字段时继续按 `status` 降级；`Cursor sessionEnd` 走 `session_end` 直删；`Session` 已新增 `external_session_id` 纯存储字段。
 
 #### A1：`/notify` 增加 `event_type` 字段
 
@@ -281,7 +283,7 @@ fn remove_session_with_cleanup(
 |---|---|---|
 | `running` | Agent 开始工作 | upsert → Running |
 | `pending` | Agent 等待用户操作 | upsert → Pending |
-| `stop` | 本轮任务完成/中止 | upsert → Success |
+| `stop` | 本轮任务完成/中止 | upsert → `Idle` / `LastFailed`（取决于 `status`） |
 | `session_end` | 会话彻底结束 | remove（含 popup） |
 
 **文件**：`src-tauri/src/bin/hook.rs`、`src-tauri/src/http_server.rs`
@@ -446,9 +448,9 @@ fn is_cursor_process_running() -> bool {
 | `src-tauri/src/settings.rs` | 移除 `session_retention_hours` 字段 | P0 ✅ |
 | 前端设置面板 | 移除"会话保留时长"选项 | P0 ✅ |
 | `docs/session-list-architecture.md` | 修正 §10 字段覆盖逻辑描述 | P0 ✅ |
-| `src-tauri/src/bin/hook.rs` | 增加 `event_type` 字段发送 | P1-A |
-| `src-tauri/src/http_server.rs` | `event_type` 分发、`session_end` → remove | P1-A |
-| `src-tauri/src/sessions.rs` | 新增 `external_session_id` 字段 | P1-A |
+| `src-tauri/src/bin/hook.rs` | 增加 `event_type` 字段发送 | P1-A ✅ |
+| `src-tauri/src/http_server.rs` | `event_type` 分发、`session_end` → remove | P1-A ✅ |
+| `src-tauri/src/sessions.rs` | 新增 `external_session_id` 字段 | P1-A ✅ |
 | `src-tauri/src/popup.rs` | Cursor frontmost 抑制、Warp/Ghostty 粗粒度兜底 | P1-B |
 | `src-tauri/src/lib.rs` | `is_alive()` 按 source 分发、Cursor 进程探活 | P1-B |
 | `docs/session-list-architecture.md` | 声明 Cursor 能力边界 | P1-B |

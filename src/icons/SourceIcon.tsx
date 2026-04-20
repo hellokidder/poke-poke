@@ -16,7 +16,7 @@ const SOURCE_COLORS: Record<string, string> = {
 const DEFAULT_COLOR = "#88AAFF";
 
 /** Hash a string to a vibrant HSL color (fixed saturation/lightness for dark bg) */
-function hashColor(seed: string): string {
+export function hashColor(seed: string): string {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
@@ -104,7 +104,7 @@ type Pixel = [number, number, string];
 
 // Eyes sit at left=[5,7], right=[11,7] (top-left corner of 2×2 eye area)
 // Mouth center at cx=8, cy=11
-function getExpression(status: SessionStatus): Pixel[] {
+export function getExpression(status: SessionStatus): Pixel[] {
   const W = "#FFFFFF";
   const D = "#1a1a2e";
 

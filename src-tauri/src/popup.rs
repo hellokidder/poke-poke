@@ -316,3 +316,18 @@ return false"#,
         .unwrap_or(false)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::target_y;
+
+    #[test]
+    fn target_y_for_first_popup_starts_below_menu_bar() {
+        assert_eq!(target_y(0), 12.0 + 30.0);
+    }
+
+    #[test]
+    fn target_y_for_second_popup_adds_height_and_gap() {
+        assert_eq!(target_y(1), 12.0 + 30.0 + 150.0 + 8.0);
+    }
+}
+

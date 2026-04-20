@@ -1,4 +1,6 @@
 mod commands;
+#[path = "bin/hook.rs"]
+pub mod hook_cli;
 mod http_server;
 mod popup;
 mod sessions;
@@ -15,6 +17,11 @@ use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if hook_cli::should_run_from_current_process() {
+        hook_cli::main();
+        return;
+    }
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -169,6 +176,7 @@ pub fn run() {
             commands::open_session_source,
             commands::focus_session_terminal,
             commands::check_cc_integration,
+            commands::repair_cc_integration,
             commands::check_codex_integration,
             commands::check_cursor_integration,
             commands::get_settings,

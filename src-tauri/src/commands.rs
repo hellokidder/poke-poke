@@ -3,9 +3,127 @@ use crate::sessions::{Session, SessionStore};
 use crate::settings::{Settings, SettingsStore};
 use crate::shortcut;
 use crate::tray;
+use serde::Serialize;
+use serde_json::Value;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
+
+const CC_HOOK_EVENTS: &[&str] = &[
+    "SessionStart",
+    "UserPromptSubmit",
+    "Notification",
+    "Stop",
+    "StopFailure",
+];
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CcIntegrationStatus {
+    pub installed: bool,
+    pub binary_executable: bool,
+    pub settings_exists: bool,
+    pub hooks_configured: bool,
+    pub connected: bool,
+    pub repair_available: bool,
+    pub issue: String,
+}
+
+fn hook_bin_path() -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+    std::path::PathBuf::from(home).join(".local/bin/poke-hook")
+}
+
+fn claude_settings_path() -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+    std::path::PathBuf::from(home).join(".claude/settings.json")
+}
+
+fn env_fallback_path() -> std::path::PathBuf {
+    std::env::current_exe().unwrap_or_default()
+}
+
+fn repair_cc_binary_path() -> std::path::PathBuf {
+    let installed = hook_bin_path();
+    if installed.exists() {
+        installed
+    } else {
+        env_fallback_path()
+    }
+}
+
+#[cfg(unix)]
+fn is_executable(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    path.metadata()
+        .map(|meta| meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable(path: &std::path::Path) -> bool {
+    path.exists()
+}
+
+fn contains_poke_hook(group: &Value) -> bool {
+    group["hooks"]
+        .as_array()
+        .map_or(false, |hooks| {
+            hooks.iter().any(|h| {
+                h["command"]
+                    .as_str()
+                    .map_or(false, |command| command.contains("poke-hook"))
+            })
+        })
+}
+
+fn cc_issue(installed: bool, binary_executable: bool, hooks_configured: bool) -> &'static str {
+    if !installed {
+        "binary_missing"
+    } else if !binary_executable {
+        "binary_not_executable"
+    } else if !hooks_configured {
+        "hooks_missing"
+    } else {
+        "healthy"
+    }
+}
+
+pub fn cc_integration_status() -> CcIntegrationStatus {
+    let hook_path = hook_bin_path();
+    let settings_path = claude_settings_path();
+
+    let installed = hook_path.exists();
+    let binary_executable = installed && is_executable(&hook_path);
+    let settings_exists = settings_path.exists();
+    let hooks_configured = if settings_exists {
+        let content = std::fs::read_to_string(&settings_path).unwrap_or_default();
+        let settings: Value = serde_json::from_str(&content).unwrap_or(serde_json::json!({}));
+        CC_HOOK_EVENTS.iter().all(|event| {
+            settings["hooks"][event]
+                .as_array()
+                .map_or(false, |arr| arr.iter().any(contains_poke_hook))
+        })
+    } else {
+        false
+    };
+    let connected = installed && binary_executable && hooks_configured;
+    let repair_available = repair_cc_binary_path().exists();
+
+    CcIntegrationStatus {
+        installed,
+        binary_executable,
+        settings_exists,
+        hooks_configured,
+        connected,
+        repair_available,
+        issue: cc_issue(installed, binary_executable, hooks_configured).into(),
+    }
+}
+
+pub fn emit_cc_integration_updated(app: &AppHandle) {
+    let _ = app.emit("cc-integration-updated", cc_integration_status());
+}
 
 #[tauri::command]
 pub fn get_sessions(
@@ -201,20 +319,8 @@ fn run_applescript_bool(script: &str) -> bool {
 
 #[tauri::command]
 pub fn check_cc_integration() -> serde_json::Value {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let hook_path = std::path::PathBuf::from(&home).join(".local/bin/poke-hook");
-    if !hook_path.exists() {
-        return serde_json::json!({"installed": false, "hooks_configured": false, "connected": false});
-    }
-    Command::new(&hook_path)
-        .arg("--check")
-        .output()
-        .ok()
-        .and_then(|o| {
-            let out = String::from_utf8_lossy(&o.stdout);
-            serde_json::from_str(out.trim()).ok()
-        })
-        .unwrap_or(serde_json::json!({"installed": false, "hooks_configured": false, "connected": false}))
+    serde_json::to_value(cc_integration_status())
+        .unwrap_or_else(|_| serde_json::json!({"connected": false, "issue": "unknown"}))
 }
 
 #[tauri::command]
@@ -294,6 +400,32 @@ pub fn save_settings(
     }
     shortcut::apply_shortcut(&app);
     let _ = app.emit("settings-updated", ());
+}
+
+#[tauri::command]
+pub fn repair_cc_integration(app: AppHandle) -> serde_json::Value {
+    let bin = repair_cc_binary_path();
+    if !bin.exists() {
+        return serde_json::json!({
+            "ok": false,
+            "status": cc_integration_status(),
+            "message": "poke-hook binary not found for repair"
+        });
+    }
+
+    let repair_ok = Command::new(&bin)
+        .arg("--install")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    tray::refresh_tray_menu(&app);
+    emit_cc_integration_updated(&app);
+
+    serde_json::json!({
+        "ok": repair_ok,
+        "status": cc_integration_status(),
+    })
 }
 
 #[tauri::command]

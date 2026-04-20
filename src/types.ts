@@ -3,6 +3,7 @@ export type SessionStatus = "pending" | "running" | "idle" | "last_failed";
 export interface Session {
   id: string;
   task_id: string;
+  external_session_id: string | null;
   title: string;
   message: string;
   source: string | null;

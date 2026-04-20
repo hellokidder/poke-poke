@@ -17,9 +17,9 @@ pub fn play_sound_by_name(name: &str) {
     play_sound_str(&sound);
 }
 
-fn play_sound_str(sound: &str) {
+fn resolve_sound_path(sound: &str) -> Option<String> {
     if sound == "mute" {
-        return;
+        return None;
     }
 
     let path = if let Some(name) = sound.strip_prefix("system:") {
@@ -27,6 +27,14 @@ fn play_sound_str(sound: &str) {
     } else {
         // Unknown format, fallback
         "/System/Library/Sounds/Glass.aiff".to_string()
+    };
+
+    Some(path)
+}
+
+fn play_sound_str(sound: &str) {
+    let Some(path) = resolve_sound_path(sound) else {
+        return;
     };
 
     std::thread::spawn(move || {
@@ -50,4 +58,30 @@ pub fn list_system_sounds() -> Vec<String> {
         .unwrap_or_default();
     sounds.sort();
     sounds
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_sound_path;
+
+    #[test]
+    fn resolve_sound_path_returns_system_sound_path() {
+        assert_eq!(
+            resolve_sound_path("system:Glass").as_deref(),
+            Some("/System/Library/Sounds/Glass.aiff"),
+        );
+    }
+
+    #[test]
+    fn resolve_sound_path_returns_none_for_mute() {
+        assert_eq!(resolve_sound_path("mute"), None);
+    }
+
+    #[test]
+    fn resolve_sound_path_falls_back_for_unknown_format() {
+        assert_eq!(
+            resolve_sound_path("custom:path").as_deref(),
+            Some("/System/Library/Sounds/Glass.aiff"),
+        );
+    }
 }

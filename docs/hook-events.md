@@ -83,15 +83,20 @@ codex --enable codex_hooks
 Task C 起，Poke 状态名换成 `running` / `pending` / `idle` / `last_failed`；
 `success` / `failure` 作为 serde alias 向下兼容老数据，新版本 hook binary 不再发这两个字符串。
 
-| Poke 状态 | CC 事件 | Codex 事件 | Cursor 事件 |
-|-----------|---------|-----------|------------|
-| running（注册/工作中） | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
-| pending（等待用户） | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应（GUI 自带可视化） |
-| last_failed（上一轮 API 错误） | **StopFailure** ✅ 已接入 | 无对应 | 无对应 |
-| idle（一轮正常结束） | Stop | Stop | stop |
+P1-A 起，hook binary 对 `/notify` 还会显式发送 `event_type`，用于区分“状态更新”和“会话彻底结束”。
+
+| Poke `event_type` | Poke 结果 | CC 事件 | Codex 事件 | Cursor 事件 |
+|-------------------|-----------|---------|-----------|------------|
+| `running` | `running`（注册/工作中） | SessionStart, UserPromptSubmit | SessionStart, UserPromptSubmit | sessionStart, beforeSubmitPrompt |
+| `pending` | `pending`（等待用户） | Notification | 无对应（需用 legacy_notify: approval-requested） | 无对应（GUI 自带可视化） |
+| `stop` | `last_failed`（上一轮 API 错误） | **StopFailure** ✅ 已接入 | 无对应 | 无对应 |
+| `stop` | `idle`（一轮正常结束） | Stop | Stop | stop |
+| `session_end` | remove（直接删除 session，不入四态） | 无对应 | 无对应 | sessionEnd |
 
 **注意：**
 - Task C 重构后，`idle` / `last_failed` **不是** session 的终态——它们表示"agent 活着、上一轮已结束"，session 生命周期改由宿主进程存活决定（见 `docs/session-lifecycle-refactor.md`）。
+- `event_type` 缺失时，后端仍按旧 `status` 字段降级解析，兼容老 hook binary。
+- `Cursor sessionEnd` 不再 upsert 成 `idle`，而是通过 `event_type = "session_end"` 直接 remove（同时关闭关联 popup）。
 - Cursor 没有等待用户交互的 hook，GUI 界面自带权限弹窗。
 - Codex 没有 Notification 事件，pending 感知需走 legacy_notify 机制或用 Stop 事件兜底。
 - Codex hooks 仍在开发中（feature flag），接入需考虑稳定性风险。

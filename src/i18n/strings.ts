@@ -29,6 +29,13 @@ export const strings: Record<Locale, Record<string, string>> = {
     "panel.empty": "暂无连接的会话",
     "panel.sessions": "{n} 个会话",
     "panel.delete": "删除",
+    "panel.cc_health_title": "Claude Code 集成已失效",
+    "panel.cc_health_binary_missing": "缺少 ~/.local/bin/poke-hook，通知链路当前不可用。",
+    "panel.cc_health_binary_not_executable": "poke-hook 存在但不可执行，需要修复安装。",
+    "panel.cc_health_hooks_missing": "~/.claude/settings.json 中缺少或丢失了 Poke Poke hooks。",
+    "panel.cc_health_unknown": "Claude Code 集成状态异常，需要修复。",
+    "panel.cc_health_repair": "一键修复",
+    "panel.cc_health_unavailable": "当前无法修复",
 
     // Popup
     "popup.click_to_jump": "点击跳转",
@@ -77,6 +84,13 @@ export const strings: Record<Locale, Record<string, string>> = {
     "panel.empty": "No connected sessions",
     "panel.sessions": "{n} sessions",
     "panel.delete": "Delete",
+    "panel.cc_health_title": "Claude Code integration needs repair",
+    "panel.cc_health_binary_missing": "Missing ~/.local/bin/poke-hook, so the notification chain is unavailable.",
+    "panel.cc_health_binary_not_executable": "poke-hook exists but is not executable and needs repair.",
+    "panel.cc_health_hooks_missing": "Poke Poke hooks are missing or incomplete in ~/.claude/settings.json.",
+    "panel.cc_health_unknown": "Claude Code integration is unhealthy and needs repair.",
+    "panel.cc_health_repair": "Repair now",
+    "panel.cc_health_unavailable": "Repair unavailable",
 
     // Popup
     "popup.click_to_jump": "Click to jump",

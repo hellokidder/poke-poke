@@ -32,16 +32,16 @@
 
 ### P0：先补事故防线
 
-- [ ] **启动自检**
+- [x] **启动自检**（Claude Code / terminal-only）
   - App 启动时主动检查 `poke-hook` 二进制、Claude hooks 配置、目标命令可执行性
   - 不能只在用户点菜单时才发现异常
-- [ ] **显式告警**
+- [x] **显式告警**（Claude Code / terminal-only）
   - 检查失败时，在托盘和面板里给出明确异常状态，而不是静默退化
   - 文案要直接指出是“Claude Code 集成已失效，需要修复”
-- [ ] **一键修复**
+- [x] **一键修复**（Claude Code / terminal-only）
   - 在检测到脚本缺失、配置丢失或配置不完整时，提供一键重新安装
   - 修复动作要幂等，可重复执行
-- [ ] **避免影响 cc 本身**
+- [x] **避免影响 cc 本身**（Claude Code / terminal-only）
   - 安装和卸载流程要确保只增删 Poke Poke 自己管理的 hook
   - 不能因为修复失败、路径失效或半安装状态把 Claude Code 搞坏
 

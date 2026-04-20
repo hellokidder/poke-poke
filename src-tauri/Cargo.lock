@@ -2907,6 +2907,7 @@ dependencies = [
  "tauri-plugin-autostart",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-opener",
+ "tempfile",
  "tokio",
  "toml_edit 0.22.27",
  "tower-http",

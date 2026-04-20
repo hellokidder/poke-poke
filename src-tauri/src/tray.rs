@@ -1,3 +1,4 @@
+use crate::commands;
 use std::process::Command;
 use tauri::{
     image::Image,
@@ -41,10 +42,20 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn build_tray_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    let cc_label = if is_cc_connected() {
-        "Claude Code Connected \u{2713}"
+    let cc_status = commands::cc_integration_status();
+    let cc_status_label = if cc_status.connected {
+        "Claude Code: Connected \u{2713}"
+    } else if cc_status.repair_available {
+        "Claude Code: Needs Repair"
     } else {
-        "Connect Claude Code"
+        "Claude Code: Repair Unavailable"
+    };
+    let cc_action_label = if cc_status.connected {
+        "Disconnect Claude Code"
+    } else if cc_status.repair_available {
+        "Repair Claude Code Integration"
+    } else {
+        "Repair Claude Code Unavailable"
     };
     let codex_label = if is_codex_connected() {
         "Codex CLI Connected \u{2713}"
@@ -52,7 +63,12 @@ fn build_tray_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wr
         "Connect Codex CLI"
     };
 
-    let cc_item = MenuItemBuilder::with_id("cc_toggle", cc_label).build(app)?;
+    let cc_status_item = MenuItemBuilder::with_id("cc_status", cc_status_label)
+        .enabled(false)
+        .build(app)?;
+    let cc_item = MenuItemBuilder::with_id("cc_toggle", cc_action_label)
+        .enabled(cc_status.connected || cc_status.repair_available)
+        .build(app)?;
     let codex_item = MenuItemBuilder::with_id("codex_toggle", codex_label).build(app)?;
     let cursor_item = MenuItemBuilder::with_id("cursor_info", "Cursor: poke-hook --install-cursor <path>")
         .enabled(false)
@@ -60,29 +76,13 @@ fn build_tray_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wr
     let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     MenuBuilder::new(app)
+        .item(&cc_status_item)
         .item(&cc_item)
         .item(&codex_item)
         .item(&cursor_item)
         .separator()
         .item(&quit_item)
         .build()
-}
-
-fn is_cc_connected() -> bool {
-    let hook_path = hook_bin_path();
-    if !hook_path.exists() {
-        return false;
-    }
-    Command::new(&hook_path)
-        .arg("--check")
-        .output()
-        .ok()
-        .and_then(|o| {
-            let out = String::from_utf8_lossy(&o.stdout);
-            serde_json::from_str::<serde_json::Value>(out.trim()).ok()
-        })
-        .and_then(|v| v["connected"].as_bool())
-        .unwrap_or(false)
 }
 
 fn is_codex_connected() -> bool {
@@ -104,7 +104,7 @@ fn is_codex_connected() -> bool {
 
 fn handle_cc_toggle(app: &AppHandle) {
     let hook_path = hook_bin_path();
-    let connected = is_cc_connected();
+    let connected = commands::cc_integration_status().connected;
     let arg = if connected { "--uninstall" } else { "--install" };
 
     let bin = if hook_path.exists() {
@@ -120,12 +120,8 @@ fn handle_cc_toggle(app: &AppHandle) {
         return;
     }
 
-    // Rebuild menu to reflect new state
-    if let Ok(menu) = build_tray_menu(app) {
-        if let Some(tray) = app.tray_by_id("main") {
-            let _ = tray.set_menu(Some(menu));
-        }
-    }
+    refresh_tray_menu(app);
+    commands::emit_cc_integration_updated(app);
 }
 
 fn handle_codex_toggle(app: &AppHandle) {
@@ -150,11 +146,7 @@ fn handle_codex_toggle(app: &AppHandle) {
         return;
     }
 
-    if let Ok(menu) = build_tray_menu(app) {
-        if let Some(tray) = app.tray_by_id("main") {
-            let _ = tray.set_menu(Some(menu));
-        }
-    }
+    refresh_tray_menu(app);
 }
 
 fn hook_bin_path() -> std::path::PathBuf {
@@ -163,11 +155,15 @@ fn hook_bin_path() -> std::path::PathBuf {
 }
 
 fn env_fallback_path() -> std::path::PathBuf {
-    std::env::current_exe()
-        .unwrap_or_default()
-        .parent()
-        .unwrap_or(std::path::Path::new("."))
-        .join("poke-hook")
+    std::env::current_exe().unwrap_or_default()
+}
+
+pub fn refresh_tray_menu(app: &AppHandle) {
+    if let Ok(menu) = build_tray_menu(app) {
+        if let Some(tray) = app.tray_by_id("main") {
+            let _ = tray.set_menu(Some(menu));
+        }
+    }
 }
 
 const PANEL_W: f64 = 380.0;
